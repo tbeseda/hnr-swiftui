@@ -9,5 +9,6 @@ struct HNReaderApp: App {
             ContentView()
                 .environment(appState)
         }
+        .defaultSize(width: 400, height: 1000)
     }
 }

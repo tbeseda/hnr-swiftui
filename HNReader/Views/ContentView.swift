@@ -24,7 +24,7 @@ struct ContentView: View {
                 storyList
             }
         }
-        .frame(minWidth: 500, minHeight: 400)
+        .frame(minWidth: 380, minHeight: 400)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -34,17 +34,6 @@ struct ContentView: View {
                 }
                 .keyboardShortcut("r", modifiers: .command)
                 .disabled(appState.isLoading)
-            }
-
-            ToolbarItem {
-                HStack(spacing: 4) {
-                    Text("Min points:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("Points", value: $minPoints, format: .number)
-                        .frame(width: 44)
-                        .textFieldStyle(.roundedBorder)
-                }
             }
         }
         .task {
@@ -59,8 +48,26 @@ struct ContentView: View {
                     UnreadDivider()
                         .listRowSeparator(.hidden)
                 }
-                StoryRowView(story: story)
+                StoryRowView(
+                    story: story,
+                    isNewlyQualified: isNewlyQualified(story)
+                )
             }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.up")
+                TextField("", value: $minPoints, format: .number)
+                    .frame(width: 32)
+                    .textFieldStyle(.plain)
+                    .onSubmit { Task { await refresh() } }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.bar)
         }
         .overlay {
             if appState.isLoading {
@@ -69,6 +76,18 @@ struct ContentView: View {
                     .padding()
             }
         }
+    }
+
+    /// Story is newly qualified if it's below the divider and wasn't in the previous refresh
+    private func isNewlyQualified(_ story: Story) -> Bool {
+        guard !appState.previousStoryIDs.isEmpty else { return false }
+        // Only applies to stories at or below the divider (previously seen region)
+        let dividerIndex = appState.stories.firstIndex { $0.storyID == lastSeenStoryID }
+        let storyIndex = appState.stories.firstIndex { $0.storyID == story.storyID }
+        guard let divider = dividerIndex, let idx = storyIndex, idx >= divider else {
+            return false
+        }
+        return !appState.previousStoryIDs.contains(story.storyID)
     }
 
     private func refresh() async {

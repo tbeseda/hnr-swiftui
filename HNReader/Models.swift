@@ -1,4 +1,10 @@
 import Foundation
+import SwiftUI
+
+extension Color {
+    /// HN orange: #f97316
+    static let hnOrange = Color(red: 0xF9 / 255, green: 0x73 / 255, blue: 0x16 / 255)
+}
 
 struct Story: Decodable, Identifiable, Hashable, Sendable {
     let storyID: String
@@ -22,19 +28,25 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
         URL(string: "https://news.ycombinator.com/item?id=\(storyID)")!
     }
 
-    /// Relative time string, e.g. "2h ago", "15m ago"
-    var relativeTime: String {
-        let now = Int(Date().timeIntervalSince1970)
-        let elapsed = now - createdAtTimestamp
-        if elapsed < 60 {
-            return "\(elapsed)s ago"
-        } else if elapsed < 3600 {
-            return "\(elapsed / 60)m ago"
-        } else if elapsed < 86400 {
-            return "\(elapsed / 3600)h ago"
-        } else {
-            return "\(elapsed / 86400)d ago"
+    /// Relative time for today's stories, MM-dd HH:mm for older
+    var timeLabel: String {
+        let date = Date(timeIntervalSince1970: Double(createdAtTimestamp))
+
+        if Calendar.current.isDateInToday(date) {
+            let elapsed = Int(Date().timeIntervalSince1970) - createdAtTimestamp
+            if elapsed < 60 {
+                return "\(elapsed)s ago"
+            } else if elapsed < 3600 {
+                return "\(elapsed / 60)m ago"
+            } else {
+                return "\(elapsed / 3600)h ago"
+            }
         }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "MM-dd HH:mm"
+        return formatter.string(from: date)
     }
 
     enum CodingKeys: String, CodingKey {
