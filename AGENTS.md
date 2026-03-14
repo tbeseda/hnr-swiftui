@@ -12,7 +12,7 @@ Application state lives in a single `AppState` object (`@Observable` + `.environ
 
 ### Data loading pattern
 
-Stories are loaded on app launch via `.task {}` and on manual refresh. There is no background polling or automatic refresh -- the user controls when data is fetched.
+Stories are loaded on app launch via `.task {}` and on manual refresh. A lightweight background check runs every 5 minutes to count new stories (for the dock badge and toolbar indicator) but does not update the displayed list -- the user controls when the list refreshes.
 
 OpenGraph preview data is deferred to a later version. For now, stories display title, points, comment count, hostname, and relative time.
 
@@ -26,6 +26,8 @@ Models use `Decodable` (not `Codable`) since the app is read-only and never enco
 
 **SwiftUI only.** Avoid AppKit except where SwiftUI has no reasonable alternative. Current exceptions:
 - `NSWorkspace.shared.open()` -- opening URLs in the default browser (no pure SwiftUI equivalent on macOS)
+- `NSCursor.pointingHand` -- pointer cursor on hover for clickable elements (no SwiftUI equivalent on macOS)
+- `NSApp.dockTile.badgeLabel` -- dock icon badge for new story count (no pure SwiftUI API for dock badges)
 
 If a feature requires deeper AppKit integration, reconsider whether it's needed.
 
@@ -58,6 +60,7 @@ No authentication required. No rate limiting headers, but be respectful -- fetch
 | `points` | `points` |
 | `num_comments` | `commentsCount` |
 | `created_at_i` | `createdAtTimestamp` |
+| `_tags` | `tags` (array: `story`, `show_hn`, `ask_hn`, `launch_hn`, `front_page`) |
 
 ## Style Preferences
 

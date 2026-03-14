@@ -5,6 +5,9 @@ struct ContentView: View {
     @AppStorage("minPoints") private var minPoints = 35
     @AppStorage("lastSeenStoryID") private var lastSeenStoryID = ""
     @State private var visitedIDs: Set<String> = []
+    @State private var filterText = ""
+    @State private var hideHNPosts = false
+    @State private var frontPageOnly = false
 
     var body: some View {
         Group {
@@ -66,9 +69,26 @@ struct ContentView: View {
         }
     }
 
+    private var filteredStories: [Story] {
+        let query = filterText.lowercased()
+        return appState.stories.filter { story in
+            if hideHNPosts && (story.isShowHN || story.isAskHN || story.isLaunchHN) {
+                return false
+            }
+            if frontPageOnly && !story.isFrontPage {
+                return false
+            }
+            if !query.isEmpty {
+                return story.title.lowercased().contains(query)
+                    || story.hostname?.lowercased().contains(query) == true
+            }
+            return true
+        }
+    }
+
     private var storyList: some View {
         List {
-            ForEach(appState.stories) { story in
+            ForEach(filteredStories) { story in
                 if story.storyID == lastSeenStoryID {
                     UnreadDivider()
                         .listRowSeparator(.hidden)
@@ -82,12 +102,37 @@ struct ContentView: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            HStack(spacing: 4) {
-                Image(systemName: "arrow.up")
-                TextField("", value: $minPoints, format: .number)
-                    .frame(width: 32)
+            HStack(spacing: 8) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up")
+                    TextField("", value: $minPoints, format: .number)
+                        .frame(width: 32)
+                        .textFieldStyle(.plain)
+                        .onSubmit { Task { await refresh() } }
+                }
+
+                TextField("Filter", text: $filterText)
                     .textFieldStyle(.plain)
-                    .onSubmit { Task { await refresh() } }
+
+                Spacer()
+
+                Button {
+                    hideHNPosts.toggle()
+                } label: {
+                    Image(systemName: hideHNPosts ? "text.bubble.fill" : "text.bubble")
+                        .foregroundStyle(hideHNPosts ? Color.hnOrange : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Hide Show/Ask/Launch HN")
+
+                Button {
+                    frontPageOnly.toggle()
+                } label: {
+                    Image(systemName: frontPageOnly ? "flame.fill" : "flame")
+                        .foregroundStyle(frontPageOnly ? Color.hnOrange : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Front page only")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -105,13 +150,18 @@ struct ContentView: View {
         }
     }
 
+    /// Map of story ID to index in the full story list, computed once per render
+    private var storyIndexMap: [String: Int] {
+        Dictionary(uniqueKeysWithValues: appState.stories.enumerated().map { ($1.storyID, $0) })
+    }
+
     /// Story is newly qualified if it's below the divider and wasn't in the previous refresh
     private func isNewlyQualified(_ story: Story) -> Bool {
         guard !appState.previousStoryIDs.isEmpty else { return false }
-        // Only applies to stories at or below the divider (previously seen region)
-        let dividerIndex = appState.stories.firstIndex { $0.storyID == lastSeenStoryID }
-        let storyIndex = appState.stories.firstIndex { $0.storyID == story.storyID }
-        guard let divider = dividerIndex, let idx = storyIndex, idx >= divider else {
+        let indexMap = storyIndexMap
+        guard let divider = indexMap[lastSeenStoryID],
+              let idx = indexMap[story.storyID],
+              idx >= divider else {
             return false
         }
         return !appState.previousStoryIDs.contains(story.storyID)

@@ -1,10 +1,4 @@
 import Foundation
-import SwiftUI
-
-extension Color {
-    /// HN orange: #f97316
-    static let hnOrange = Color(red: 0xF9 / 255, green: 0x73 / 255, blue: 0x16 / 255)
-}
 
 struct Story: Decodable, Identifiable, Hashable, Sendable {
     let storyID: String
@@ -14,8 +8,14 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
     let points: Int
     let commentsCount: Int
     let createdAtTimestamp: Int
+    let tags: [String]
 
     var id: String { storyID }
+
+    var isShowHN: Bool { tags.contains("show_hn") }
+    var isAskHN: Bool { tags.contains("ask_hn") }
+    var isLaunchHN: Bool { tags.contains("launch_hn") }
+    var isFrontPage: Bool { tags.contains("front_page") }
 
     /// Hostname extracted from URL, e.g. "github.com"
     var hostname: String? {
@@ -43,11 +43,15 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
             }
         }
 
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "MM-dd HH:mm"
-        return formatter.string(from: date)
+        return Self.olderDateFormatter.string(from: date)
     }
+
+    private static let olderDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MM-dd HH:mm"
+        return f
+    }()
 
     enum CodingKeys: String, CodingKey {
         case storyID = "objectID"
@@ -57,6 +61,7 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
         case points
         case commentsCount = "num_comments"
         case createdAtTimestamp = "created_at_i"
+        case tags = "_tags"
     }
 }
 

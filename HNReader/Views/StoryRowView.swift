@@ -32,21 +32,24 @@ struct StoryRowView: View {
 
                 HStack(spacing: 8) {
                     Label("\(story.points)", systemImage: "arrow.up")
+                        .foregroundStyle(story.isFrontPage ? Color.hnOrange : .secondary)
                         .onTapGesture { NSWorkspace.shared.open(story.hnURL) }
-                        .onHover { inside in
-                            if inside { NSCursor.pointingHand.push() }
-                            else { NSCursor.pop() }
-                        }
                     Label("\(story.commentsCount)", systemImage: "bubble.right")
                         .onTapGesture { NSWorkspace.shared.open(story.hnURL) }
-                        .onHover { inside in
-                            if inside { NSCursor.pointingHand.push() }
-                            else { NSCursor.pop() }
-                        }
 
                     if let hostname = story.hostname {
                         Text(hostname)
                             .foregroundStyle(.tertiary)
+                    }
+
+                    if story.isShowHN {
+                        storyTag("Show")
+                    }
+                    if story.isAskHN {
+                        storyTag("Ask")
+                    }
+                    if story.isLaunchHN {
+                        storyTag("Launch")
                     }
                 }
                 .font(.caption)
@@ -59,9 +62,15 @@ struct StoryRowView: View {
             let url = story.url.flatMap(URL.init(string:)) ?? story.hnURL
             NSWorkspace.shared.open(url)
         }
-        .onHover { inside in
-            if inside { NSCursor.pointingHand.push() }
-            else { NSCursor.pop() }
-        }
+        .pointerOnHover()
+    }
+
+    private func storyTag(_ label: String) -> some View {
+        Text(label)
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(.quaternary, in: Capsule())
     }
 }
