@@ -30,7 +30,7 @@ struct ContentView: View {
                 storyList
             }
         }
-        .frame(minWidth: 480, minHeight: 400)
+        .frame(minWidth: 550, minHeight: 400)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 TextField("Filter", text: $filterText)
@@ -70,10 +70,11 @@ struct ContentView: View {
                                     Text("\(appState.newStoryCount)")
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundStyle(.white)
-                                        .padding(.horizontal, 4)
+                                        .padding(.horizontal, 3)
                                         .padding(.vertical, 1)
                                         .background(Color.hnOrange, in: Capsule())
-                                        .offset(x: 8, y: -6)
+                                        .fixedSize()
+                                        .offset(x: 10, y: -6)
                                 }
                             }
                     }
