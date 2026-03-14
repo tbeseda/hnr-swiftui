@@ -3,6 +3,8 @@ import SwiftUI
 struct StoryRowView: View {
     let story: Story
     var isNewlyQualified = false
+    var isVisited = false
+    var onVisit: () -> Void = {}
 
     private static let gutterWidth: CGFloat = 14
 
@@ -18,6 +20,7 @@ struct StoryRowView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(story.title)
                         .fontWeight(.medium)
+                        .foregroundStyle(isVisited ? .secondary : .primary)
                         .lineLimit(2)
 
                     Spacer()
@@ -30,8 +33,16 @@ struct StoryRowView: View {
                 HStack(spacing: 8) {
                     Label("\(story.points)", systemImage: "arrow.up")
                         .onTapGesture { NSWorkspace.shared.open(story.hnURL) }
+                        .onHover { inside in
+                            if inside { NSCursor.pointingHand.push() }
+                            else { NSCursor.pop() }
+                        }
                     Label("\(story.commentsCount)", systemImage: "bubble.right")
                         .onTapGesture { NSWorkspace.shared.open(story.hnURL) }
+                        .onHover { inside in
+                            if inside { NSCursor.pointingHand.push() }
+                            else { NSCursor.pop() }
+                        }
 
                     if let hostname = story.hostname {
                         Text(hostname)
@@ -44,8 +55,13 @@ struct StoryRowView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
+            onVisit()
             let url = story.url.flatMap(URL.init(string:)) ?? story.hnURL
             NSWorkspace.shared.open(url)
+        }
+        .onHover { inside in
+            if inside { NSCursor.pointingHand.push() }
+            else { NSCursor.pop() }
         }
     }
 }

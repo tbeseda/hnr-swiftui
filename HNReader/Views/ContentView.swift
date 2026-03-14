@@ -4,6 +4,7 @@ struct ContentView: View {
     @Environment(AppState.self) private var appState
     @AppStorage("minPoints") private var minPoints = 35
     @AppStorage("lastSeenStoryID") private var lastSeenStoryID = ""
+    @State private var visitedIDs: Set<String> = []
 
     var body: some View {
         Group {
@@ -31,6 +32,17 @@ struct ContentView: View {
                     Task { await refresh() }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
+                        .overlay(alignment: .topTrailing) {
+                            if appState.newStoryCount > 0 {
+                                Text("\(appState.newStoryCount)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color.hnOrange, in: Capsule())
+                                    .offset(x: 8, y: -6)
+                            }
+                        }
                 }
                 .keyboardShortcut("r", modifiers: .command)
                 .disabled(appState.isLoading)
@@ -38,6 +50,19 @@ struct ContentView: View {
         }
         .task {
             await refresh()
+        }
+        .task(id: "background-check") {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(300))
+                await appState.checkForNewStories(
+                    minPoints: minPoints,
+                    lastSeenStoryID: lastSeenStoryID
+                )
+                updateDockBadge()
+            }
+        }
+        .onChange(of: appState.newStoryCount) {
+            updateDockBadge()
         }
     }
 
@@ -50,7 +75,9 @@ struct ContentView: View {
                 }
                 StoryRowView(
                     story: story,
-                    isNewlyQualified: isNewlyQualified(story)
+                    isNewlyQualified: isNewlyQualified(story),
+                    isVisited: visitedIDs.contains(story.storyID),
+                    onVisit: { visitedIDs.insert(story.storyID) }
                 )
             }
         }
@@ -88,6 +115,12 @@ struct ContentView: View {
             return false
         }
         return !appState.previousStoryIDs.contains(story.storyID)
+    }
+
+    private func updateDockBadge() {
+        NSApp.dockTile.badgeLabel = appState.newStoryCount > 0
+            ? "\(appState.newStoryCount)"
+            : nil
     }
 
     private func refresh() async {
