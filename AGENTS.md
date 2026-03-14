@@ -28,6 +28,7 @@ Models use `Decodable` (not `Codable`) since the app is read-only and never enco
 - `NSWorkspace.shared.open()` -- opening URLs in the default browser (no pure SwiftUI equivalent on macOS)
 - `NSCursor.pointingHand` -- pointer cursor on hover for clickable elements (no SwiftUI equivalent on macOS)
 - `NSApp.dockTile.badgeLabel` -- dock icon badge for new story count (no pure SwiftUI API for dock badges)
+- `NSScreen.main?.visibleFrame.height` -- sizing the default window to the screen height (no SwiftUI equivalent for reading screen geometry at the Scene level)
 
 If a feature requires deeper AppKit integration, reconsider whether it's needed.
 
@@ -37,7 +38,7 @@ If a feature requires deeper AppKit integration, reconsider whether it's needed.
 
 **No external dependencies.** Pure SwiftUI with Foundation. No third-party packages.
 
-**Fixed timestamp format.** Use relative time display ("2h ago", "15m ago") for story ages. When absolute timestamps are needed, use `yyyy-MM-dd HH:mm`, not locale-dependent formatting.
+**Fixed timestamp format.** Use relative time display ("2h ago", "15m ago") for story ages. When absolute timestamps are needed, use `MM-dd HH:mm` (year omitted for visual consistency with relative timestamps), not locale-dependent formatting.
 
 ## API Details
 
@@ -45,7 +46,7 @@ HN Algolia API base URL: `https://hn.algolia.com/api/v1`
 
 Primary endpoint:
 ```
-GET /search_by_date?tags=story&numericFilters=points>{minPoints}&hitsPerPage=200
+GET /search_by_date?tags=story&numericFilters=points>={minPoints}&hitsPerPage=200
 ```
 
 No authentication required. No rate limiting headers, but be respectful -- fetch only on user action, not on a timer.

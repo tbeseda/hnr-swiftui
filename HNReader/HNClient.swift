@@ -9,7 +9,7 @@ struct HNClient: Sendable {
         }
         components.queryItems = [
             URLQueryItem(name: "tags", value: "story"),
-            URLQueryItem(name: "numericFilters", value: "points>\(minPoints)"),
+            URLQueryItem(name: "numericFilters", value: "points>=\(minPoints)"),
             URLQueryItem(name: "hitsPerPage", value: "\(limit)"),
         ]
 

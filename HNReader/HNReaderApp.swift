@@ -9,6 +9,6 @@ struct HNReaderApp: App {
             ContentView()
                 .environment(appState)
         }
-        .defaultSize(width: 400, height: 1000)
+        .defaultSize(width: 642, height: NSScreen.main?.visibleFrame.height ?? 800)
     }
 }

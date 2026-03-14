@@ -6,8 +6,10 @@ struct ContentView: View {
     @AppStorage("lastSeenStoryID") private var lastSeenStoryID = ""
     @State private var visitedIDs: Set<String> = []
     @State private var filterText = ""
-    @State private var hideHNPosts = false
+    @State private var showCommunityPosts = true
     @State private var frontPageOnly = false
+    @State private var showSettings = false
+    @State private var minPointsBeforeSettings = 0
 
     var body: some View {
         Group {
@@ -28,24 +30,53 @@ struct ContentView: View {
                 storyList
             }
         }
-        .frame(minWidth: 380, minHeight: 400)
+        .frame(minWidth: 480, minHeight: 400)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItem(placement: .principal) {
+                TextField("Filter", text: $filterText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 180)
+                    .padding(.horizontal, 4)
+            }
+
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    showSettings.toggle()
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .popover(isPresented: $showSettings) {
+                    Form {
+                        TextField("Minimum points", value: $minPoints, format: .number)
+                            .onSubmit { showSettings = false }
+                        Toggle("Community posts", isOn: $showCommunityPosts)
+                        Toggle("Front page only", isOn: $frontPageOnly)
+                    }
+                    .formStyle(.grouped)
+                    .frame(width: 240)
+                    .fixedSize()
+                }
+
                 Button {
                     Task { await refresh() }
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                        .overlay(alignment: .topTrailing) {
-                            if appState.newStoryCount > 0 {
-                                Text("\(appState.newStoryCount)")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 1)
-                                    .background(Color.hnOrange, in: Capsule())
-                                    .offset(x: 8, y: -6)
+                    if appState.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                            .overlay(alignment: .topTrailing) {
+                                if appState.newStoryCount > 0 {
+                                    Text("\(appState.newStoryCount)")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.hnOrange, in: Capsule())
+                                        .offset(x: 8, y: -6)
+                                }
                             }
-                        }
+                    }
                 }
                 .keyboardShortcut("r", modifiers: .command)
                 .disabled(appState.isLoading)
@@ -57,11 +88,15 @@ struct ContentView: View {
         .task(id: "background-check") {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(300))
-                await appState.checkForNewStories(
-                    minPoints: minPoints,
-                    lastSeenStoryID: lastSeenStoryID
-                )
+                await appState.checkForNewStories(minPoints: minPoints)
                 updateDockBadge()
+            }
+        }
+        .onChange(of: showSettings) {
+            if showSettings {
+                minPointsBeforeSettings = minPoints
+            } else if minPoints != minPointsBeforeSettings {
+                Task { await refresh() }
             }
         }
         .onChange(of: appState.newStoryCount) {
@@ -72,7 +107,7 @@ struct ContentView: View {
     private var filteredStories: [Story] {
         let query = filterText.lowercased()
         return appState.stories.filter { story in
-            if hideHNPosts && (story.isShowHN || story.isAskHN || story.isLaunchHN) {
+            if !showCommunityPosts && (story.isShowHN || story.isAskHN || story.isLaunchHN) {
                 return false
             }
             if frontPageOnly && !story.isFrontPage {
@@ -87,7 +122,8 @@ struct ContentView: View {
     }
 
     private var storyList: some View {
-        List {
+        let indexMap = storyIndexMap
+        return List {
             ForEach(filteredStories) { story in
                 if story.storyID == lastSeenStoryID {
                     UnreadDivider()
@@ -95,57 +131,10 @@ struct ContentView: View {
                 }
                 StoryRowView(
                     story: story,
-                    isNewlyQualified: isNewlyQualified(story),
+                    isNewlyQualified: isNewlyQualified(story, indexMap: indexMap),
                     isVisited: visitedIDs.contains(story.storyID),
                     onVisit: { visitedIDs.insert(story.storyID) }
                 )
-            }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            HStack(spacing: 8) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up")
-                    TextField("", value: $minPoints, format: .number)
-                        .frame(width: 32)
-                        .textFieldStyle(.plain)
-                        .onSubmit { Task { await refresh() } }
-                }
-
-                TextField("Filter", text: $filterText)
-                    .textFieldStyle(.plain)
-
-                Spacer()
-
-                Button {
-                    hideHNPosts.toggle()
-                } label: {
-                    Image(systemName: hideHNPosts ? "text.bubble.fill" : "text.bubble")
-                        .foregroundStyle(hideHNPosts ? Color.hnOrange : .secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Hide Show/Ask/Launch HN")
-
-                Button {
-                    frontPageOnly.toggle()
-                } label: {
-                    Image(systemName: frontPageOnly ? "flame.fill" : "flame")
-                        .foregroundStyle(frontPageOnly ? Color.hnOrange : .secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Front page only")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.bar)
-        }
-        .overlay {
-            if appState.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding()
             }
         }
     }
@@ -156,9 +145,8 @@ struct ContentView: View {
     }
 
     /// Story is newly qualified if it's below the divider and wasn't in the previous refresh
-    private func isNewlyQualified(_ story: Story) -> Bool {
+    private func isNewlyQualified(_ story: Story, indexMap: [String: Int]) -> Bool {
         guard !appState.previousStoryIDs.isEmpty else { return false }
-        let indexMap = storyIndexMap
         guard let divider = indexMap[lastSeenStoryID],
               let idx = indexMap[story.storyID],
               idx >= divider else {

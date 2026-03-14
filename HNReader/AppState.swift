@@ -46,16 +46,16 @@ final class AppState {
         return previousTopID
     }
 
-    /// Background check: fetch stories, count how many are newer than lastSeenStoryID
-    func checkForNewStories(minPoints: Int, lastSeenStoryID: String) async {
-        guard !lastSeenStoryID.isEmpty else { return }
+    /// Background check: count stories newer than the current top of the displayed list
+    func checkForNewStories(minPoints: Int) async {
+        guard let topID = stories.first?.storyID else { return }
 
         do {
             let fresh = try await client.fetchStories(minPoints: minPoints)
-            if let divider = fresh.firstIndex(where: { $0.storyID == lastSeenStoryID }) {
-                newStoryCount = divider
+            if let topIndex = fresh.firstIndex(where: { $0.storyID == topID }) {
+                newStoryCount = topIndex
             } else {
-                // lastSeenStoryID not in results -- all stories are newer
+                // Current top story not in results -- all stories are newer
                 newStoryCount = fresh.count
             }
         } catch {
