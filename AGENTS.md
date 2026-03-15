@@ -1,5 +1,11 @@
 # Agent Guidelines for HNReader
 
+Development note: always build, kill, and restart the app after making changes. Do this in one command like:
+
+```sh
+xcodebuild -project HNReader.xcodeproj -scheme HNReader -configuration Debug build 2>&1 | tail -3 && pkill -x HNReader 2>/dev/null && sleep 0.5 && open ~/Library/Developer/Xcode/DerivedData/HNReader-dnsrhgkmdfqwxecqmfigxnfjkqgz/Build/Products/Debug/HNReader.app
+```
+
 ## Project Overview
 
 HNReader is a native macOS windowed app for browsing Hacker News stories in reverse-chronological order. It fetches stories from the HN Algolia API, filters by minimum point threshold, and tracks which stories are new since the user's last refresh. The app is **read-only** -- it never posts or modifies anything on Hacker News.
@@ -38,7 +44,7 @@ If a feature requires deeper AppKit integration, reconsider whether it's needed.
 
 **No external dependencies.** Pure SwiftUI with Foundation. No third-party packages.
 
-**Fixed timestamp format.** Use relative time display ("2h ago", "15m ago") for story ages. When absolute timestamps are needed, use `MM-dd HH:mm` (year omitted for visual consistency with relative timestamps), not locale-dependent formatting.
+**Fixed timestamp format.** Use relative time display ("2h ago", "15m ago") for story ages. When absolute timestamps are needed, use `M-d HH:mm` (no leading zeros on month/day, year omitted for brevity), not locale-dependent formatting.
 
 ## API Details
 
@@ -73,6 +79,14 @@ No authentication required. No rate limiting headers, but be respectful -- fetch
 - Prefer computed properties over helper methods when no parameters needed
 - Use `@AppStorage` for simple user preferences
 - Always ask the user before git operations (commit, push, tag)
+
+## Assets
+
+The app icon lives in `HNReader/Assets.xcassets/AppIcon.appiconset/`. Source PNGs are in `./icons/`. If the icon changes, regenerate all sizes (16 through 1024) from the source and update the appiconset.
+
+## CI / Release
+
+A GitHub Actions workflow at `.github/workflows/release.yml` builds and releases the app on `v*` tags. It runs `xcodebuild` on `macos-15`, zips the `.app` bundle, and creates a GitHub Release with auto-generated notes. No secrets or signing are configured -- the build is unsigned.
 
 ## Unread Tracking
 
