@@ -56,6 +56,9 @@ struct StoryRowView: View {
                 .foregroundStyle(.secondary)
             }
         }
+        .alignmentGuide(.listRowSeparatorLeading) { d in
+            d[.leading] + Self.gutterWidth
+        }
         .contentShape(Rectangle())
         .onTapGesture {
             onVisit()

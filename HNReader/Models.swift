@@ -28,7 +28,7 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
         URL(string: "https://news.ycombinator.com/item?id=\(storyID)")!
     }
 
-    /// Relative time for today's stories, M-d HH:mm for older
+    /// Relative time for today's stories, short day-of-week + time for older
     var timeLabel: String {
         let date = Date(timeIntervalSince1970: Double(createdAtTimestamp))
 
@@ -49,7 +49,7 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
     private static let olderDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "M-d HH:mm"
+        f.dateFormat = "EEE HH:mm"
         return f
     }()
 
