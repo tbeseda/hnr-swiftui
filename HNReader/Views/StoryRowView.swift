@@ -6,7 +6,9 @@ struct StoryRowView: View {
     var isVisited = false
     var onVisit: () -> Void = {}
 
-    private static let gutterWidth: CGFloat = 14
+    @AppStorage("openLinksInBackground") private var openLinksInBackground = false
+
+    private static let gutterWidth: CGFloat = 10
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -33,9 +35,9 @@ struct StoryRowView: View {
                 HStack(spacing: 8) {
                     Label("\(story.points)", systemImage: "arrow.up")
                         .foregroundStyle(story.isFrontPage ? Color.hnOrange : .secondary)
-                        .onTapGesture { NSWorkspace.shared.open(story.hnURL) }
+                        .onTapGesture { openURL(story.hnURL) }
                     Label("\(story.commentsCount)", systemImage: "bubble.right")
-                        .onTapGesture { NSWorkspace.shared.open(story.hnURL) }
+                        .onTapGesture { openURL(story.hnURL) }
 
                     if let hostname = story.hostname {
                         Text(hostname)
@@ -55,6 +57,9 @@ struct StoryRowView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+
+            Spacer()
+                .frame(width: Self.gutterWidth)
         }
         .alignmentGuide(.listRowSeparatorLeading) { d in
             d[.leading] + Self.gutterWidth
@@ -63,9 +68,19 @@ struct StoryRowView: View {
         .onTapGesture {
             onVisit()
             let url = story.url.flatMap(URL.init(string:)) ?? story.hnURL
-            NSWorkspace.shared.open(url)
+            openURL(url)
         }
         .pointerOnHover()
+    }
+
+    private func openURL(_ url: URL) {
+        if openLinksInBackground {
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = false
+            NSWorkspace.shared.open(url, configuration: config, completionHandler: nil)
+        } else {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func storyTag(_ label: String) -> some View {

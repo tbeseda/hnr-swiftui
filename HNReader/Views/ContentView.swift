@@ -4,12 +4,12 @@ struct ContentView: View {
     @Environment(AppState.self) private var appState
     @AppStorage("minPoints") private var minPoints = 35
     @AppStorage("lastSeenStoryID") private var lastSeenStoryID = ""
+    @AppStorage("showCommunityPosts") private var showCommunityPosts = true
+    @AppStorage("frontPageOnly") private var frontPageOnly = false
+    @AppStorage("refreshInterval") private var refreshInterval = 300
+    @AppStorage("showDockBadge") private var showDockBadge = true
     @State private var visitedIDs: Set<String> = []
     @State private var filterText = ""
-    @State private var showCommunityPosts = true
-    @State private var frontPageOnly = false
-    @State private var showSettings = false
-    @State private var minPointsBeforeSettings = 0
 
     var body: some View {
         Group {
@@ -41,23 +41,6 @@ struct ContentView: View {
 
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
-                    showSettings.toggle()
-                } label: {
-                    Label("Settings", systemImage: "gearshape")
-                }
-                .popover(isPresented: $showSettings) {
-                    Form {
-                        TextField("Minimum points", value: $minPoints, format: .number)
-                            .onSubmit { showSettings = false }
-                        Toggle("Community posts", isOn: $showCommunityPosts)
-                        Toggle("Front page only", isOn: $frontPageOnly)
-                    }
-                    .formStyle(.grouped)
-                    .frame(width: 240)
-                    .fixedSize()
-                }
-
-                Button {
                     Task { await refresh() }
                 } label: {
                     if appState.isLoading {
@@ -86,21 +69,21 @@ struct ContentView: View {
         .task {
             await refresh()
         }
-        .task(id: "background-check") {
+        .task(id: refreshInterval) {
+            guard refreshInterval > 0 else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(300))
+                try? await Task.sleep(for: .seconds(refreshInterval))
                 await appState.checkForNewStories(minPoints: minPoints)
                 updateDockBadge()
             }
         }
-        .onChange(of: showSettings) {
-            if showSettings {
-                minPointsBeforeSettings = minPoints
-            } else if minPoints != minPointsBeforeSettings {
-                Task { await refresh() }
-            }
+        .onChange(of: minPoints) {
+            Task { await refresh() }
         }
         .onChange(of: appState.newStoryCount) {
+            updateDockBadge()
+        }
+        .onChange(of: showDockBadge) {
             updateDockBadge()
         }
     }
@@ -157,7 +140,7 @@ struct ContentView: View {
     }
 
     private func updateDockBadge() {
-        NSApp.dockTile.badgeLabel = appState.newStoryCount > 0
+        NSApp.dockTile.badgeLabel = showDockBadge && appState.newStoryCount > 0
             ? "\(appState.newStoryCount)"
             : nil
     }

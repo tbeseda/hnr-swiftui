@@ -184,34 +184,123 @@ Uses `.secondary` foreground color and default divider styling.
 
 ## Implementation Phases
 
-### Phase 1: Skeleton (Current)
+### Phase 1: Skeleton ✓
 - [x] AGENTS.md
 - [x] PLAN.md
-- [ ] Project structure with stub files
-- [ ] Models.swift with Story struct
-- [ ] HNClient.swift with fetchStories
-- [ ] AppState.swift with refresh logic
-- [ ] Basic views (ContentView, StoryRowView)
+- [x] Project structure with stub files
+- [x] Models.swift with Story struct
+- [x] HNClient.swift with fetchStories
+- [x] AppState.swift with refresh logic
+- [x] Basic views (ContentView, StoryRowView)
 
-### Phase 2: Core Functionality
-- [ ] Wire up .task {} for initial load
-- [ ] Toolbar with refresh button and points filter
-- [ ] Unread divider logic
-- [ ] Open story URL in browser
-- [ ] Error and loading states
+### Phase 2: Core Functionality ✓
+- [x] Wire up .task {} for initial load
+- [x] Toolbar with refresh button and points filter
+- [x] Unread divider logic
+- [x] Open story URL in browser
+- [x] Error and loading states
 
-### Phase 3: Polish
-- [ ] Relative time formatting
-- [ ] Hostname extraction from URL
-- [ ] HN discussion link for stories without URL
-- [ ] Window title and sizing
-- [ ] Keyboard shortcuts (Cmd+R for refresh)
+### Phase 3: Polish ✓
+- [x] Relative time formatting
+- [x] Hostname extraction from URL
+- [x] HN discussion link for stories without URL
+- [x] Window title and sizing
+- [x] Keyboard shortcuts (Cmd+R for refresh)
+- [x] Background polling (5-min) with new story count badge
+- [x] Dock badge for new story count
+- [x] Visited story dimming
+- [x] Story type tags (Show, Ask, Launch)
+- [x] Front page story highlighting
+- [x] Text filter in toolbar
 
-### Phase 4: Future (v2)
+### Phase 4: v2 — Settings, Background Open, App Store
+
+#### 4.1 Settings Window
+
+Replace the toolbar settings popover with a proper macOS `Settings` scene (`⌘,`).
+
+**Create `SettingsView.swift`:**
+- Single-pane settings form containing all preferences
+- All settings backed by `@AppStorage` (persisted across launches)
+
+| Setting | Key | Type | Default | Notes |
+|---------|-----|------|---------|-------|
+| Minimum points | `minPoints` | `Int` | `35` | Already exists as `@AppStorage` in ContentView |
+| Show community posts | `showCommunityPosts` | `Bool` | `true` | Currently `@State` only — promote to `@AppStorage` |
+| Front page only | `frontPageOnly` | `Bool` | `false` | Currently `@State` only — promote to `@AppStorage` |
+| Open links in background | `openLinksInBackground` | `Bool` | `false` | New setting |
+| Background refresh interval | `refreshInterval` | `Int` | `300` | New setting (seconds). Picker options: 60, 120, 300, 600, 900, 1800, 0 (never) |
+
+**Update `HNReaderApp.swift`:**
+- Add `Settings { SettingsView() }` scene alongside the existing `WindowGroup`
+- This gives the app the standard macOS Preferences window via `⌘,`
+
+**Update `ContentView.swift`:**
+- Remove the settings popover entirely (gear button, `showSettings` state, popover + Form — lines 43-58)
+- Replace `@State var showCommunityPosts` and `@State var frontPageOnly` with `@AppStorage` equivalents
+- Read `refreshInterval` from `@AppStorage` and use it in the background polling loop instead of the hardcoded `300`
+- Handle `refreshInterval == 0` to disable background polling entirely
+
+#### 4.2 Open Links in Background
+
+All links should open in the default browser without bringing it to the foreground when the setting is enabled. Applies to both story URLs and HN discussion links.
+
+**Update `StoryRowView.swift`:**
+- Read `@AppStorage("openLinksInBackground") var openLinksInBackground = false`
+- Replace the 3 `NSWorkspace.shared.open(url)` call sites (lines 36, 38, 63-67) with a helper that uses `NSWorkspace.OpenConfiguration`:
+
+```swift
+private func openURL(_ url: URL) {
+    if openLinksInBackground {
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = false
+        NSWorkspace.shared.open(url, configuration: config)
+    } else {
+        NSWorkspace.shared.open(url)
+    }
+}
+```
+
+This is a legitimate AppKit exception (like the existing `NSWorkspace.shared.open()` calls already allowed in AGENTS.md).
+
+#### 4.3 App Store Distribution
+
+**Signing configuration (in Xcode project or `project.pbxproj`):**
+- `CODE_SIGN_STYLE = Automatic`
+- `DEVELOPMENT_TEAM = <team ID from Apple Developer account>`
+- `CODE_SIGN_IDENTITY = "Apple Development"` (Debug) / `"Apple Distribution"` (Release)
+- Let Xcode manage provisioning profiles automatically
+
+**App Sandbox entitlements — create `HNReader.entitlements`:**
+- `com.apple.security.app-sandbox` = `YES`
+- `com.apple.security.network.client` = `YES` (outgoing network for Algolia API)
+
+Note: `NSWorkspace.shared.open()`, `NSApp.dockTile.badgeLabel`, `NSCursor`, and `NSScreen` all work fine within the App Sandbox.
+
+**App Store metadata prep:**
+- **Category:** News
+- **Bundle display name:** HN Reader (currently "HNReader" — consider adding a space)
+- **Description:** Draft concise App Store copy
+- **Screenshots:** Capture main list view in light and dark mode
+- **Privacy policy:** The app only calls the public Algolia HN API. No accounts, no data collection. Host a simple privacy policy page (GitHub Pages or similar).
+- **Age rating:** 4+
+- **Copyright:** Set `INFOPLIST_KEY_NSHumanReadableCopyright` (e.g., "Copyright © 2025 tbeseda")
+
+**Update GitHub Actions (`release.yml`):**
+- Import signing certificates and provisioning profiles via repository secrets
+- Build with proper code signing for App Store distribution
+- Export as `.pkg` for App Store upload
+- Optionally upload to App Store Connect via `xcrun altool` or Transporter
+
+**App Store Connect (manual):**
+- Create app record
+- Upload first build
+- Fill metadata, screenshots, privacy URL
+- Submit for review
+
+### Phase 5: Future (v3)
 - [ ] OpenGraph preview data (async per-row fetch)
 - [ ] AI content scoring (port is-ai-ish logic)
-- [ ] Settings scene for preferences
-- [ ] New story count in window title or toolbar
 
 ## Xcode Project
 
