@@ -253,40 +253,39 @@ Fetch OpenGraph metadata (title, description, image) for story URLs to show rich
 - Should OG fetching be opt-in via Settings?
 - What's the minimal useful OG data? (description only? image thumbnail?)
 
-### Phase 6: App Store Distribution
+### Phase 6: Homebrew Distribution
 
-**Signing configuration (in Xcode project or `project.pbxproj`):**
-- `CODE_SIGN_STYLE = Automatic`
-- `DEVELOPMENT_TEAM = <team ID from Apple Developer account>`
-- `CODE_SIGN_IDENTITY = "Apple Development"` (Debug) / `"Apple Distribution"` (Release)
-- Let Xcode manage provisioning profiles automatically
+Distributed via a personal Homebrew tap. The app is unsigned -- Homebrew removes the quarantine attribute on install, bypassing Gatekeeper.
 
-**App Sandbox entitlements — create `HNReader.entitlements`:**
-- `com.apple.security.app-sandbox` = `YES`
-- `com.apple.security.network.client` = `YES` (outgoing network for Algolia API)
+**Tap repository:** `tbeseda/homebrew-tap` on GitHub
 
-Note: `NSWorkspace.shared.open()`, `NSApp.dockTile.badgeLabel`, `NSCursor`, and `NSScreen` all work fine within the App Sandbox.
+**Cask formula:** `Casks/hn-reader.rb` in the tap repo, pointing to the `.zip` artifact from GitHub Releases.
 
-**App Store metadata prep:**
-- **Category:** News
-- **Bundle display name:** HN Reader (currently "HNReader" -- consider adding a space)
-- **Description:** Draft concise App Store copy
-- **Screenshots:** Capture main list view in light and dark mode
-- **Privacy policy:** The app only calls the public Algolia HN API. No accounts, no data collection. Host a simple privacy policy page (GitHub Pages or similar).
-- **Age rating:** 4+
-- **Copyright:** Set `INFOPLIST_KEY_NSHumanReadableCopyright` (e.g., "Copyright 2025 tbeseda")
+**Install command:**
+```sh
+brew tap tbeseda/tap
+brew install --cask hn-reader
+```
 
-**Update GitHub Actions (`release.yml`):**
-- Import signing certificates and provisioning profiles via repository secrets
-- Build with proper code signing for App Store distribution
-- Export as `.pkg` for App Store upload
-- Optionally upload to App Store Connect via `xcrun altool` or Transporter
+**Release workflow (`release.yml`):**
+- Builds the app, zips it, computes SHA256
+- Creates a GitHub Release with the zip and SHA256 in the release notes
+- Auto-updates the Homebrew tap: clones the tap repo, updates version + SHA256 in the cask formula, commits, and pushes
 
-**App Store Connect (manual):**
-- Create app record
-- Upload first build
-- Fill metadata, screenshots, privacy URL
-- Submit for review
+**Required setup:**
+- [ ] Create `tbeseda/homebrew-tap` repo on GitHub with `Casks/hn-reader.rb`
+- [ ] Create a GitHub PAT with `repo` scope for the tap repo
+- [ ] Add the PAT as `TAP_GITHUB_TOKEN` secret in the `hnr-swiftui` repo settings
+- [ ] Tag a release to trigger the first automated build + tap update
+
+**Future: App Store Distribution (deferred)**
+
+If revisiting App Store distribution later, the key additions are:
+- Apple Developer account (active)
+- Code signing (Automatic, with `DEVELOPMENT_TEAM` set)
+- App Sandbox entitlements (`com.apple.security.app-sandbox` + `com.apple.security.network.client`)
+- App Store Connect record with metadata, screenshots, privacy policy URL
+- Archive + upload workflow (replace zip with `xcodebuild archive` + `exportArchive`)
 
 ## Xcode Project
 
