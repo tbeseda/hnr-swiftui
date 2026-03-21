@@ -16,13 +16,16 @@ The SwiftUI app simplifies this dramatically: it fetches directly from the Algol
 - **Open in browser** -- Click a story to open its URL in the default browser
 
 ### Features Deferred
-- **OpenGraph previews** -- Requires fetching each story URL; defer to v2
-- **AI content scoring** -- The `is-ai-ish` scoring from the web service; defer to v2
+- **OpenGraph previews** -- Requires fetching each story URL; exploring for v2
 - **Story retention/pruning rules** -- No local database; fetch fresh each time
-- **Background polling** -- No timers; user controls refresh
-- **New story count badge** -- The `/count` endpoint equivalent; defer to v2
 
 ### Features Dropped
+- **AI content scoring** -- The `is-ai-ish` scoring from the web service; not worth the complexity
+
+- **Background polling** -- Implemented in v1 (configurable interval)
+- **New story count badge** -- Implemented in v1 (dock badge + toolbar indicator)
+
+### Features Dropped (from web service)
 - **Server-side rendering** -- Replaced by native SwiftUI views
 - **DynamoDB storage** -- No persistent story database
 - **Session-based tracking** -- Replaced by `@AppStorage`
@@ -36,14 +39,16 @@ hnr-swiftui/
 ├── PLAN.md
 ├── HNReader.xcodeproj/
 └── HNReader/
-    ├── HNReaderApp.swift       # @main, WindowGroup scene, Settings scene
+    ├── HNReaderApp.swift       # @main, WindowGroup + Settings scenes
     ├── AppState.swift          # @Observable: stories, loading, error, refresh logic
     ├── HNClient.swift          # Immutable Sendable Algolia API client
     ├── Models.swift            # Story model (Decodable, Sendable, Identifiable)
     └── Views/
-        ├── ContentView.swift   # Toolbar (refresh, points filter) + story list
+        ├── ContentView.swift   # Toolbar (refresh, filter) + story list
         ├── StoryRowView.swift  # Single story: title, meta, hostname, time
-        └── UnreadDivider.swift # Visual divider between new and old stories
+        ├── SettingsView.swift  # macOS Settings window (Cmd+,)
+        ├── UnreadDivider.swift # Visual divider between new and old stories
+        └── Helpers.swift       # Color.hnOrange, .pointerOnHover() modifier
 ```
 
 ## Data Model
@@ -120,12 +125,15 @@ final class AppState {
 
 ### Persisted State (`@AppStorage`)
 
-Stored in `ContentView` (or wherever the preference is read):
-
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
 | `minPoints` | `Int` | `35` | Minimum point threshold for API query |
 | `lastSeenStoryID` | `String` | `""` | Most recent story ID at time of previous refresh |
+| `showCommunityPosts` | `Bool` | `true` | Show/hide Ask HN, Show HN, Launch HN |
+| `frontPageOnly` | `Bool` | `false` | Filter to front page stories only |
+| `refreshInterval` | `Int` | `300` | Background refresh interval in seconds (0 = disabled) |
+| `showDockBadge` | `Bool` | `true` | Show new story count on dock icon |
+| `openLinksInBackground` | `Bool` | `false` | Open URLs without activating browser (disabled -- browsers ignore `activates = false`) |
 
 ## Unread Tracking Logic
 
@@ -213,57 +221,39 @@ Uses `.secondary` foreground color and default divider styling.
 - [x] Front page story highlighting
 - [x] Text filter in toolbar
 
-### Phase 4: v2 — Settings, Background Open, App Store
+### Phase 4: v2 — Settings & Polish ✓
 
-#### 4.1 Settings Window
+#### 4.1 Settings Window ✓
+- [x] Created `SettingsView.swift` with grouped Form (Stories + Behavior sections)
+- [x] Added `Settings` scene to `HNReaderApp.swift` (standard `Cmd+,`)
+- [x] Removed toolbar settings popover from ContentView
+- [x] Promoted `showCommunityPosts` and `frontPageOnly` from `@State` to `@AppStorage`
+- [x] Settings use local `@State` draft -- changes apply on window close, not per-keystroke
+- [x] Configurable background refresh interval (Never, 1m, 2m, 5m, 10m, 15m, 30m)
+- [x] Dock icon badge toggle
+- [x] `onChange(of: minPoints)` triggers re-fetch when min points changes via Settings
 
-Replace the toolbar settings popover with a proper macOS `Settings` scene (`⌘,`).
+#### 4.2 Open Links in Background (partially complete)
+- [x] Code in place: `openURL()` helper using `NSWorkspace.OpenConfiguration` with `activates = false`
+- [ ] **Blocked:** Browsers ignore `activates = false` and activate themselves anyway. Setting is disabled in UI. Revisit if macOS or browsers improve support.
 
-**Create `SettingsView.swift`:**
-- Single-pane settings form containing all preferences
-- All settings backed by `@AppStorage` (persisted across launches)
+### Phase 5: OpenGraph Previews (exploratory)
 
-| Setting | Key | Type | Default | Notes |
-|---------|-----|------|---------|-------|
-| Minimum points | `minPoints` | `Int` | `35` | Already exists as `@AppStorage` in ContentView |
-| Show community posts | `showCommunityPosts` | `Bool` | `true` | Currently `@State` only — promote to `@AppStorage` |
-| Front page only | `frontPageOnly` | `Bool` | `false` | Currently `@State` only — promote to `@AppStorage` |
-| Open links in background | `openLinksInBackground` | `Bool` | `false` | New setting |
-| Background refresh interval | `refreshInterval` | `Int` | `300` | New setting (seconds). Picker options: 60, 120, 300, 600, 900, 1800, 0 (never) |
+Fetch OpenGraph metadata (title, description, image) for story URLs to show richer previews in the list.
 
-**Update `HNReaderApp.swift`:**
-- Add `Settings { SettingsView() }` scene alongside the existing `WindowGroup`
-- This gives the app the standard macOS Preferences window via `⌘,`
+**Considerations:**
+- The web service used a background Lambda to scrape OG data per-story and cache it in DynamoDB
+- In a native app, fetching OG data means hitting each story URL from the user's machine
+- Need to be respectful: lazy-load only for visible rows, cache aggressively, handle failures gracefully
+- Some sites block or rate-limit scraping -- the app must degrade gracefully to the current title-only display
+- Privacy: the user's IP will be making requests to each story's domain (unlike the server-side approach)
 
-**Update `ContentView.swift`:**
-- Remove the settings popover entirely (gear button, `showSettings` state, popover + Form — lines 43-58)
-- Replace `@State var showCommunityPosts` and `@State var frontPageOnly` with `@AppStorage` equivalents
-- Read `refreshInterval` from `@AppStorage` and use it in the background polling loop instead of the hardcoded `300`
-- Handle `refreshInterval == 0` to disable background polling entirely
+**Open questions:**
+- Is the UX improvement worth the network overhead and privacy tradeoff?
+- Should OG fetching be opt-in via Settings?
+- What's the minimal useful OG data? (description only? image thumbnail?)
 
-#### 4.2 Open Links in Background
-
-All links should open in the default browser without bringing it to the foreground when the setting is enabled. Applies to both story URLs and HN discussion links.
-
-**Update `StoryRowView.swift`:**
-- Read `@AppStorage("openLinksInBackground") var openLinksInBackground = false`
-- Replace the 3 `NSWorkspace.shared.open(url)` call sites (lines 36, 38, 63-67) with a helper that uses `NSWorkspace.OpenConfiguration`:
-
-```swift
-private func openURL(_ url: URL) {
-    if openLinksInBackground {
-        let config = NSWorkspace.OpenConfiguration()
-        config.activates = false
-        NSWorkspace.shared.open(url, configuration: config)
-    } else {
-        NSWorkspace.shared.open(url)
-    }
-}
-```
-
-This is a legitimate AppKit exception (like the existing `NSWorkspace.shared.open()` calls already allowed in AGENTS.md).
-
-#### 4.3 App Store Distribution
+### Phase 6: App Store Distribution
 
 **Signing configuration (in Xcode project or `project.pbxproj`):**
 - `CODE_SIGN_STYLE = Automatic`
@@ -279,12 +269,12 @@ Note: `NSWorkspace.shared.open()`, `NSApp.dockTile.badgeLabel`, `NSCursor`, and 
 
 **App Store metadata prep:**
 - **Category:** News
-- **Bundle display name:** HN Reader (currently "HNReader" — consider adding a space)
+- **Bundle display name:** HN Reader (currently "HNReader" -- consider adding a space)
 - **Description:** Draft concise App Store copy
 - **Screenshots:** Capture main list view in light and dark mode
 - **Privacy policy:** The app only calls the public Algolia HN API. No accounts, no data collection. Host a simple privacy policy page (GitHub Pages or similar).
 - **Age rating:** 4+
-- **Copyright:** Set `INFOPLIST_KEY_NSHumanReadableCopyright` (e.g., "Copyright © 2025 tbeseda")
+- **Copyright:** Set `INFOPLIST_KEY_NSHumanReadableCopyright` (e.g., "Copyright 2025 tbeseda")
 
 **Update GitHub Actions (`release.yml`):**
 - Import signing certificates and provisioning profiles via repository secrets
@@ -297,10 +287,6 @@ Note: `NSWorkspace.shared.open()`, `NSApp.dockTile.badgeLabel`, `NSCursor`, and 
 - Upload first build
 - Fill metadata, screenshots, privacy URL
 - Submit for review
-
-### Phase 5: Future (v3)
-- [ ] OpenGraph preview data (async per-row fetch)
-- [ ] AI content scoring (port is-ai-ish logic)
 
 ## Xcode Project
 
@@ -318,11 +304,11 @@ Since Xcode is not currently installed, source files will be written first. The 
 | `get-stories` (scheduled Lambda) | `HNClient.fetchStories()` called on user action |
 | `get-index` (HTTP Lambda + Pug) | `ContentView` + `StoryRowView` |
 | `get-count` (HTTP Lambda) | Not needed -- unread state is local |
-| `check-story` (event Lambda) | Deferred -- OpenGraph in v2 |
+| `check-story` (event Lambda) | Exploring for Phase 5 (OpenGraph) |
 | `clean-stories` (scheduled Lambda) | Not needed -- no persistent storage |
 | `stories` DynamoDB table | `AppState.stories` array (in-memory) |
 | `sessions` DynamoDB table | `@AppStorage("lastSeenStoryID")` |
-| `is-ai-ish.mjs` | Deferred to v2 |
+| `is-ai-ish.mjs` | Dropped -- not worth the complexity |
 | `story-rules.mjs` | Not needed -- no retention rules |
 | `style.css` | SwiftUI semantic styles |
 | Web Components (`<hnr-header>`, `<story-list>`) | SwiftUI views |

@@ -9,6 +9,7 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
     let commentsCount: Int
     let createdAtTimestamp: Int
     let tags: [String]
+    let storyText: String?
 
     var id: String { storyID }
 
@@ -16,6 +17,21 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
     var isAskHN: Bool { tags.contains("ask_hn") }
     var isLaunchHN: Bool { tags.contains("launch_hn") }
     var isFrontPage: Bool { tags.contains("front_page") }
+
+    /// Self-post text with HTML stripped and entities decoded
+    var plainStoryText: String? {
+        guard let storyText, !storyText.isEmpty else { return nil }
+        var text = storyText
+            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#x27;", with: "'")
+            .replacingOccurrences(of: "&#x2F;", with: "/")
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
 
     /// Hostname extracted from URL, e.g. "github.com"
     var hostname: String? {
@@ -62,6 +78,7 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
         case commentsCount = "num_comments"
         case createdAtTimestamp = "created_at_i"
         case tags = "_tags"
+        case storyText = "story_text"
     }
 }
 
