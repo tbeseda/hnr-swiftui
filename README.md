@@ -8,6 +8,15 @@ A native macOS app for browsing Hacker News stories in reverse-chronological ord
 
 ## Install
 
+### Homebrew
+
+```sh
+brew tap tbeseda/tap
+brew install --cask hn-reader
+```
+
+### Manual
+
 Download `HNReader.zip` from the [latest release](../../releases/latest), unzip, and move to `/Applications`.
 
 The app is not signed. To open it for the first time, either:
