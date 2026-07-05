@@ -42,14 +42,8 @@ struct ContentView: View {
                     .background(.bar, in: UnevenRoundedRectangle(topTrailingRadius: 6))
             }
         }
+        .searchable(text: $filterText, placement: .toolbar, prompt: "Filter")
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                TextField("Filter", text: $filterText)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 180)
-                    .padding(.horizontal, 4)
-            }
-
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
                     Task { await refresh() }

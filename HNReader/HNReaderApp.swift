@@ -10,6 +10,7 @@ struct HNReaderApp: App {
                 .environment(appState)
         }
         .defaultSize(width: 550, height: NSScreen.main?.visibleFrame.height ?? 800)
+        .windowToolbarStyle(.unified(showsTitle: false))
 
         Settings {
             SettingsView()
