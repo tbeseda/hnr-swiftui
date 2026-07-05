@@ -31,6 +31,17 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 550, minHeight: 400)
+        .overlay(alignment: .bottomLeading) {
+            if let url = appState.hoveredURL {
+                Text(url.absoluteString)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.bar, in: UnevenRoundedRectangle(topTrailingRadius: 6))
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 TextField("Filter", text: $filterText)

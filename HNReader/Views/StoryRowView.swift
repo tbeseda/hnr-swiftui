@@ -29,10 +29,9 @@ struct StoryRowView: View {
                         .lineLimit(2)
                         .onTapGesture {
                             onVisit()
-                            let url = story.url.flatMap(URL.init(string:)) ?? story.hnURL
-                            openURL(url)
+                            openURL(story.linkURL)
                         }
-                        .pointerOnHover()
+                        .linkHover(story.linkURL)
 
                     Spacer()
 
@@ -54,10 +53,10 @@ struct StoryRowView: View {
                     Label("\(story.points)", systemImage: "arrow.up")
                         .foregroundStyle(story.isFrontPage ? Color.hnOrange : .secondary)
                         .onTapGesture { openURL(story.hnURL) }
-                        .pointerOnHover()
+                        .linkHover(story.hnURL)
                     Label("\(story.commentsCount)", systemImage: "bubble.right")
                         .onTapGesture { openURL(story.hnURL) }
-                        .pointerOnHover()
+                        .linkHover(story.hnURL)
 
                     if let hostname = story.hostname {
                         Text(hostname)
@@ -82,10 +81,8 @@ struct StoryRowView: View {
                     Label(story.author, systemImage: "person")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .onTapGesture {
-                            openURL(URL(string: "https://news.ycombinator.com/user?id=\(story.author)")!)
-                        }
-                        .pointerOnHover()
+                        .onTapGesture { openURL(authorURL) }
+                        .linkHover(authorURL)
                         .padding(.top, 2)
 
                     if let text = story.plainStoryText {
@@ -107,6 +104,10 @@ struct StoryRowView: View {
         .alignmentGuide(.listRowSeparatorLeading) { d in
             d[.leading] + gutter
         }
+    }
+
+    private var authorURL: URL {
+        URL(string: "https://news.ycombinator.com/user?id=\(story.author)")!
     }
 
     private func openURL(_ url: URL) {

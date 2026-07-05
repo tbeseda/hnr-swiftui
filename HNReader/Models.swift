@@ -44,6 +44,11 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
         URL(string: "https://news.ycombinator.com/item?id=\(storyID)")!
     }
 
+    /// The story's external URL, falling back to the HN discussion page
+    var linkURL: URL {
+        url.flatMap(URL.init(string:)) ?? hnURL
+    }
+
     /// Relative time for today's stories, short day-of-week + time for older
     var timeLabel: String {
         let date = Date(timeIntervalSince1970: Double(createdAtTimestamp))

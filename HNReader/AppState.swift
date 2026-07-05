@@ -5,6 +5,7 @@ final class AppState {
     var stories: [Story] = []
     var isLoading = false
     var error: String?
+    var hoveredURL: URL?
 
     /// Count of new stories found by background checks
     var newStoryCount = 0
