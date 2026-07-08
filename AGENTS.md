@@ -3,7 +3,7 @@
 Development note: always build, kill, and restart the app after making changes. Do this in one command like:
 
 ```sh
-xcodebuild -project HNReader.xcodeproj -scheme HNReader -configuration Debug build 2>&1 | tail -3 && pkill -x HNReader 2>/dev/null && sleep 0.5 && open ~/Library/Developer/Xcode/DerivedData/HNReader-dnsrhgkmdfqwxecqmfigxnfjkqgz/Build/Products/Debug/HNReader.app
+xcodebuild -project HNReader.xcodeproj -scheme HNReader -configuration Debug build 2>&1 | tail -3 && pkill -x HNReader 2>/dev/null; sleep 0.5 && open ~/Library/Developer/Xcode/DerivedData/HNReader-*/Build/Products/Debug/HNReader.app
 ```
 
 ## Project Overview
@@ -52,8 +52,10 @@ HN Algolia API base URL: `https://hn.algolia.com/api/v1`
 
 Primary endpoint:
 ```
-GET /search_by_date?tags=story&numericFilters=points>={minPoints}&hitsPerPage=200
+GET /search_by_date?tags=story&hitsPerPage=1000
 ```
+
+The points threshold is applied client-side. The API used to support `numericFilters=points>={minPoints}`, but as of July 2026 it returns 400 ("attribute not specified in numericAttributesForFiltering setting") -- `points` and `num_comments` are no longer filterable; only `created_at_i` is.
 
 No authentication required. No rate limiting headers, but be respectful -- fetch only on user action, not on a timer.
 

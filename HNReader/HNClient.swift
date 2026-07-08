@@ -3,14 +3,18 @@ import Foundation
 struct HNClient: Sendable {
     private static let baseURL = "https://hn.algolia.com/api/v1"
 
+    /// Max hitsPerPage the Algolia HN API allows
+    private static let pageSize = 1000
+
     func fetchStories(minPoints: Int, limit: Int = 200) async throws -> [Story] {
         guard var components = URLComponents(string: "\(Self.baseURL)/search_by_date") else {
             throw HNClientError.invalidURL
         }
+        // The API rejects numericFilters on points (400), so fetch the max
+        // page of recent stories and apply the points threshold client-side
         components.queryItems = [
             URLQueryItem(name: "tags", value: "story"),
-            URLQueryItem(name: "numericFilters", value: "points>=\(minPoints)"),
-            URLQueryItem(name: "hitsPerPage", value: "\(limit)"),
+            URLQueryItem(name: "hitsPerPage", value: "\(Self.pageSize)"),
         ]
 
         guard let url = components.url else {
@@ -26,7 +30,7 @@ struct HNClient: Sendable {
         }
 
         let decoded = try JSONDecoder().decode(AlgoliaResponse.self, from: data)
-        return decoded.hits
+        return Array(decoded.hits.filter { $0.points >= minPoints }.prefix(limit))
     }
 }
 
