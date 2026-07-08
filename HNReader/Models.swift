@@ -1,6 +1,6 @@
 import Foundation
 
-struct Story: Decodable, Identifiable, Hashable, Sendable {
+struct Story: Identifiable, Hashable, Sendable, Codable {
     let storyID: String
     let title: String
     let author: String
@@ -74,19 +74,31 @@ struct Story: Decodable, Identifiable, Hashable, Sendable {
         return f
     }()
 
-    enum CodingKeys: String, CodingKey {
-        case storyID = "objectID"
-        case title
-        case author
-        case url
-        case points
-        case commentsCount = "num_comments"
-        case createdAtTimestamp = "created_at_i"
-        case tags = "_tags"
-        case storyText = "story_text"
-    }
-}
+    /// Builds a Story from a Firebase API item, or nil for non-stories
+    /// and deleted/dead items. Tags are derived: the Firebase API has no
+    /// tag field, but Show/Ask/Launch HN are title conventions and
+    /// front-page membership comes from the top-stories ranking.
+    init?(item: HNItem, isFrontPage: Bool) {
+        guard item.type == "story",
+              item.deleted != true, item.dead != true,
+              let title = item.title,
+              let time = item.time else { return nil }
 
-struct AlgoliaResponse: Decodable, Sendable {
-    let hits: [Story]
+        var tags = ["story"]
+        let lowered = title.lowercased()
+        if lowered.hasPrefix("show hn") { tags.append("show_hn") }
+        if lowered.hasPrefix("ask hn") { tags.append("ask_hn") }
+        if lowered.hasPrefix("launch hn") { tags.append("launch_hn") }
+        if isFrontPage { tags.append("front_page") }
+
+        self.storyID = String(item.id)
+        self.title = title
+        self.author = item.by ?? ""
+        self.url = item.url
+        self.points = item.score ?? 0
+        self.commentsCount = item.descendants ?? 0
+        self.createdAtTimestamp = time
+        self.tags = tags
+        self.storyText = item.text
+    }
 }

@@ -8,7 +8,7 @@ xcodebuild -project HNReader.xcodeproj -scheme HNReader -configuration Debug bui
 
 ## Project Overview
 
-HNReader is a native macOS windowed app for browsing Hacker News stories in reverse-chronological order. It fetches stories from the HN Algolia API, filters by minimum point threshold, and tracks which stories are new since the user's last refresh. The app is **read-only** -- it never posts or modifies anything on Hacker News.
+HNReader is a native macOS windowed app for browsing Hacker News stories in reverse-chronological order. It fetches stories from the official HN Firebase API, filters by minimum point threshold, and tracks which stories are new since the user's last refresh. The app is **read-only** -- it never posts or modifies anything on Hacker News.
 
 ## Architecture
 
@@ -18,11 +18,11 @@ Application state lives in a single `AppState` object (`@Observable` + `.environ
 
 ### Data loading pattern
 
-Stories are loaded on app launch via `.task {}` and on manual refresh. A lightweight background check runs every 5 minutes to count new stories (for the dock badge and toolbar indicator) but does not update the displayed list -- the user controls when the list refreshes.
+Stories are loaded on app launch via `.task {}` and on manual refresh. A lightweight background check runs every 5 minutes to count new stories (for the dock badge and toolbar indicator) and fold them into the persistent store, but it does not update the displayed list -- the user controls when the list refreshes.
 
 OpenGraph preview data is deferred to a later version. For now, stories display title, points, comment count, hostname, and relative time.
 
-Models use `Decodable` (not `Codable`) since the app is read-only and never encodes models back to JSON.
+The API DTO (`HNItem`) uses `Decodable` (not `Codable`) since the app never writes to the API. `Story` is built from `HNItem` and is `Codable` for the local store file.
 
 ## Key Constraints
 
@@ -40,7 +40,7 @@ If a feature requires deeper AppKit integration, reconsider whether it's needed.
 
 **Swift 6 strict concurrency.** All model types must conform to `Sendable`. Build and test in Release mode before pushing -- it is stricter than Debug for concurrency.
 
-**Read-only.** The app only reads from the HN Algolia API. No write operations, no authentication.
+**Read-only.** The app only reads from the HN Firebase API. No write operations, no authentication.
 
 **No external dependencies.** Pure SwiftUI with Foundation. No third-party packages.
 
@@ -48,28 +48,38 @@ If a feature requires deeper AppKit integration, reconsider whether it's needed.
 
 ## API Details
 
-HN Algolia API base URL: `https://hn.algolia.com/api/v1`
+Official HN Firebase API base URL: `https://hacker-news.firebaseio.com/v0` (docs: https://github.com/HackerNews/API). The app previously used the HN Algolia API, but in July 2026 that service dropped `points` from its filterable attributes (breaking `numericFilters=points>=N` with a 400) and its repo (algolia/hn-search) was archived in Feb 2026, so we migrated to the official API.
 
-Primary endpoint:
+Endpoints used:
 ```
-GET /search_by_date?tags=story&hitsPerPage=1000
+GET /topstories.json     -- ~500 IDs, front-page ranking
+GET /beststories.json    -- ~200 IDs, highest-scoring recent
+GET /newstories.json     -- ~500 IDs, every submission (~8h deep), no ranking
+GET /item/{id}.json      -- single item
 ```
 
-The points threshold is applied client-side. The API used to support `numericFilters=points>={minPoints}`, but as of July 2026 it returns 400 ("attribute not specified in numericAttributesForFiltering setting") -- `points` and `num_comments` are no longer filterable; only `created_at_i` is.
+The API has no server-side filtering: security rules deny collection-level queries on `/v0/item` (no orderBy/startAt range queries, and no indexes on score/type/time), so the ID lists are the only "queries" available. Full enumeration is not viable either (HN creates ~15k items/day, comments included). Refresh fetches the union of top+best+new IDs (~900-1000 items, concurrent) and filters by points client-side.
 
-No authentication required. No rate limiting headers, but be respectful -- fetch only on user action, not on a timer.
+**The ranked lists forget.** top/best coverage of qualifying stories is complete for only ~48h (measured July 2026); older stories fall off, with flagged/penalized stories dropping earliest. To keep the reverse-chron list canonical, `AppState` accumulates every qualifying story it sees into a store persisted at `~/Library/Application Support/HNReader/stories.json` (inside the sandbox container if sandboxed), pruned to a 14-day horizon. The displayed list is the store filtered by threshold, so stories never vanish once seen. Residual gap: stories that rise and fall entirely while the app is closed for 2+ days. Lowering the points threshold only takes effect for newly seen stories -- the store never held sub-threshold ones.
 
-**Response mapping:**
-| Algolia Field | Model Field |
-|---------------|-------------|
-| `objectID` | `storyID` |
+Key invariant: **HN item IDs increase monotonically with creation time.** The 5-minute background check exploits this -- it fetches `topstories.json` + `newstories.json` plus only items whose ID is greater than the newest displayed story's ID, skipping IDs already stored or already checked below-threshold (ranked IDs are rechecked, since their scores are moving). Typically a handful of item requests per check, never the full snapshot. Keep it that way: the fan-out belongs on user-initiated refresh only. Qualifying finds are folded into the store, so long-running sessions accumulate canonically even without manual refreshes.
+
+The API is HTTP/1.1 only; `HNClient` uses a URLSession with `httpMaximumConnectionsPerHost = 20` so the ~550-item fan-out completes in a few seconds. No authentication, no rate limiting (per the official docs).
+
+**Response mapping** (`HNItem` -> `Story`):
+| Firebase Field | Model Field |
+|----------------|-------------|
+| `id` (Int) | `storyID` (String) |
 | `title` | `title` |
-| `author` | `author` |
-| `url` | `url` (nullable) |
-| `points` | `points` |
-| `num_comments` | `commentsCount` |
-| `created_at_i` | `createdAtTimestamp` |
-| `_tags` | `tags` (array: `story`, `show_hn`, `ask_hn`, `launch_hn`, `front_page`) |
+| `by` | `author` |
+| `url` | `url` (nullable -- absent on Ask HN/self posts) |
+| `score` | `points` |
+| `descendants` | `commentsCount` |
+| `time` | `createdAtTimestamp` |
+| `text` | `storyText` |
+| (derived) | `tags` -- `story` always; `show_hn`/`ask_hn`/`launch_hn` from title prefix; `front_page` = membership in first 30 of topstories |
+
+Items with `deleted` or `dead` set, and item requests returning literal `null`, are dropped. Story IDs are unchanged from the Algolia era (Algolia's `objectID` was the HN item ID), so persisted `lastSeenStoryID` values remain valid.
 
 ## Style Preferences
 
