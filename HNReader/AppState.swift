@@ -33,22 +33,33 @@ final class AppState {
         storedStories = Self.loadStore()
     }
 
-    func refresh(minPoints: Int, lastSeenStoryID: String) async -> String {
+    /// Phase 1 of a refresh, synchronous so the UI updates in one frame:
+    /// promotes stored stories (background-check finds) into the displayed
+    /// list and returns the ID that becomes the new unread divider -- the
+    /// story that was on top when refresh was invoked.
+    func beginRefresh(minPoints: Int, lastSeenStoryID: String) -> String {
         isLoading = true
         error = nil
         newStoryCount = 0
         resetCheckedIDsIfThresholdChanged(minPoints)
 
-        // The current topmost story becomes the new "last seen" after refresh
+        // The current topmost story becomes the new "last seen"
         let previousTopID = stories.first?.storyID ?? lastSeenStoryID
 
-        // Snapshot current IDs before replacing
+        // Snapshot displayed IDs before promoting, so newly promoted
+        // stories get the "newly qualified" marker immediately
         let currentIDs = Set(stories.map(\.storyID))
-
-        // Surface what the store already knows immediately (background-check
-        // finds, threshold changes); the network pass settles scores after
         stories = displayList(minPoints: minPoints)
+        if !currentIDs.isEmpty {
+            previousStoryIDs = currentIDs
+        }
 
+        return previousTopID
+    }
+
+    /// Phase 2: settle scores and discover risers over the network,
+    /// then re-render from the store
+    func finishRefresh(minPoints: Int) async {
         do {
             let result = try await client.fetchStories(minPoints: minPoints, checkedIDs: checkedIDs)
             checkedIDs.formUnion(result.belowThresholdIDs)
@@ -64,20 +75,7 @@ final class AppState {
         // Display from the store even when the fetch failed -- stale stories
         // beat an error screen when offline
         stories = displayList(minPoints: minPoints)
-
-        // Only track previous IDs after the first load (not on launch)
-        if !currentIDs.isEmpty {
-            previousStoryIDs = currentIDs
-        }
-
         isLoading = false
-
-        // Return the ID that should become the new lastSeenStoryID
-        // On first launch (no previous ID), use the current top story so no divider shows
-        if previousTopID.isEmpty {
-            return stories.first?.storyID ?? ""
-        }
-        return previousTopID
     }
 
     /// Background check: find qualifying stories newer than the current top of

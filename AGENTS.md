@@ -103,7 +103,7 @@ A GitHub Actions workflow at `.github/workflows/release.yml` builds and releases
 ## Unread Tracking
 
 The core UX feature is a visible divider line in the story list:
-- On refresh, the current topmost story ID is saved as `lastSeenStoryID`
+- On refresh, the current topmost story ID is saved as `lastSeenStoryID` -- synchronously, in `AppState.beginRefresh`, so the divider moves in the same frame the promoted stories appear (the async `finishRefresh` only settles scores)
 - Stories above the divider are "new since last refresh"
 - Stories below were already visible on the previous refresh
 - `lastSeenStoryID` persists via `@AppStorage` across app restarts

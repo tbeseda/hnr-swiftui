@@ -151,9 +151,17 @@ struct ContentView: View {
     }
 
     private func refresh() async {
-        lastSeenStoryID = await appState.refresh(
+        // The divider moves in the same frame as the promoted stories;
+        // the network pass only settles scores afterward
+        lastSeenStoryID = appState.beginRefresh(
             minPoints: minPoints,
             lastSeenStoryID: lastSeenStoryID
         )
+        await appState.finishRefresh(minPoints: minPoints)
+
+        // First launch ever: mark the top story seen so no divider shows
+        if lastSeenStoryID.isEmpty {
+            lastSeenStoryID = appState.stories.first?.storyID ?? ""
+        }
     }
 }
