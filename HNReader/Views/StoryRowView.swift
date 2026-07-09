@@ -50,13 +50,14 @@ struct StoryRowView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Label("\(story.points)", systemImage: "arrow.up")
-                        .foregroundStyle(story.isFrontPage ? Color.hnOrange : .secondary)
-                        .onTapGesture { openURL(story.hnURL) }
-                        .linkHover(story.hnURL)
-                    Label("\(story.commentsCount)", systemImage: "bubble.right")
-                        .onTapGesture { openURL(story.hnURL) }
-                        .linkHover(story.hnURL)
+                    HStack(spacing: 8) {
+                        Label("\(story.points)", systemImage: "arrow.up")
+                            .foregroundStyle(story.isFrontPage ? Color.hnOrange : .secondary)
+                        Label("\(story.commentsCount)", systemImage: "bubble.right")
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { openURL(story.hnURL) }
+                    .linkHover(story.hnURL)
 
                     if let hostname = story.hostname {
                         Text(hostname)
@@ -81,6 +82,7 @@ struct StoryRowView: View {
                     Label(story.author, systemImage: "person")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .contentShape(Rectangle())
                         .onTapGesture { openURL(authorURL) }
                         .linkHover(authorURL)
                         .padding(.top, 2)
