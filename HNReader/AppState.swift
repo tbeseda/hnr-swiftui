@@ -21,8 +21,8 @@ final class AppState {
     /// refreshes would show gaps.
     private var storedStories: [String: Story] = [:]
 
-    /// IDs background checks fetched and found below the threshold,
-    /// kept to avoid refetching them every 5 minutes
+    /// IDs fetched this session and found below the threshold, kept so
+    /// refreshes and background checks skip them while they stay unranked
     private var checkedIDs: Set<Int> = []
     private var checkedMinPoints: Int?
 
@@ -37,7 +37,7 @@ final class AppState {
         isLoading = true
         error = nil
         newStoryCount = 0
-        checkedIDs = []
+        resetCheckedIDsIfThresholdChanged(minPoints)
 
         // The current topmost story becomes the new "last seen" after refresh
         let previousTopID = stories.first?.storyID ?? lastSeenStoryID
@@ -45,9 +45,14 @@ final class AppState {
         // Snapshot current IDs before replacing
         let currentIDs = Set(stories.map(\.storyID))
 
+        // Surface what the store already knows immediately (background-check
+        // finds, threshold changes); the network pass settles scores after
+        stories = displayList(minPoints: minPoints)
+
         do {
-            let fetched = try await client.fetchStories(minPoints: minPoints)
-            for story in fetched {
+            let result = try await client.fetchStories(minPoints: minPoints, checkedIDs: checkedIDs)
+            checkedIDs.formUnion(result.belowThresholdIDs)
+            for story in result.qualifying {
                 storedStories[story.storyID] = story
             }
             pruneStore()
@@ -81,12 +86,7 @@ final class AppState {
     func checkForNewStories(minPoints: Int) async {
         guard let topID = stories.first?.storyID, let referenceID = Int(topID) else { return }
 
-        // Cached below-threshold verdicts are only valid for the threshold
-        // they were checked against
-        if checkedMinPoints != minPoints {
-            checkedIDs = []
-            checkedMinPoints = minPoints
-        }
+        resetCheckedIDsIfThresholdChanged(minPoints)
 
         do {
             let knownIDs = Set(storedStories.keys.compactMap(Int.init).filter { $0 > referenceID })
@@ -110,6 +110,15 @@ final class AppState {
                 .count
         } catch {
             // Silently ignore background check failures
+        }
+    }
+
+    /// Cached below-threshold verdicts are only valid for the threshold
+    /// they were checked against
+    private func resetCheckedIDsIfThresholdChanged(_ minPoints: Int) {
+        if checkedMinPoints != minPoints {
+            checkedIDs = []
+            checkedMinPoints = minPoints
         }
     }
 

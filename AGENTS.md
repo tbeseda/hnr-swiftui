@@ -64,7 +64,7 @@ The API has no server-side filtering: security rules deny collection-level queri
 
 Key invariant: **HN item IDs increase monotonically with creation time.** The 5-minute background check exploits this -- it fetches `topstories.json` + `newstories.json` plus only items whose ID is greater than the newest displayed story's ID, skipping IDs already stored or already checked below-threshold (ranked IDs are rechecked, since their scores are moving). Typically a handful of item requests per check, never the full snapshot. Keep it that way: the fan-out belongs on user-initiated refresh only. Qualifying finds are folded into the store, so long-running sessions accumulate canonically even without manual refreshes.
 
-The API is HTTP/1.1 only; `HNClient` uses a URLSession with `httpMaximumConnectionsPerHost = 20` so the ~550-item fan-out completes in a few seconds. No authentication, no rate limiting (per the official docs).
+The API is HTTP/1.1 only; `HNClient` uses a URLSession with `httpMaximumConnectionsPerHost = 40` (measured July 2026: 2x faster than 20; 64 regresses, so don't raise it further). Two more things keep refresh fast: (1) refresh displays from the store instantly and lets the fan-out settle scores afterward, so perceived latency is ~0; (2) items fetched this session and found below threshold are skipped while unranked (`checkedIDs`) -- an unranked story's score is effectively frozen, so it can't cross the threshold without re-entering the rankings. Cold refresh is ~960 items; warm refresh is roughly half that. No authentication, no rate limiting (per the official docs).
 
 **Response mapping** (`HNItem` -> `Story`):
 | Firebase Field | Model Field |
