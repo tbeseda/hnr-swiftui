@@ -237,6 +237,13 @@ Uses `.secondary` foreground color and default divider styling.
 - [x] Code in place: `openURL()` helper using `NSWorkspace.OpenConfiguration` with `activates = false`
 - [ ] **Blocked:** Browsers ignore `activates = false` and activate themselves anyway. Setting is disabled in UI. Revisit if macOS or browsers improve support.
 
+**Retested 2026-07-09 on macOS 26.5.1 (Tahoe), still blocked for Chromium browsers.** Findings from in-app testing (synthetic clicks on story titles, verified to land via Vivaldi renderer-process counts and active-tab titles):
+- Vivaldi (Chromium) self-activates and foregrounds the new tab when it receives the URL, with `activates = false` behaving identically to a plain `open()`. Chrome/Edge/Brave/Arc share this code path. Cooperative activation (macOS 14+) does not block the browser's self-activation.
+- `open -g` from a shell fails the same way, so this is not an NSWorkspace bug; there is no OS-level hint the browser can't override.
+- Safari honors the hint: `open -g -a Safari <url>` opened a window without taking focus. The feature would work for Safari-default users only, which is too unreliable to ship as a setting.
+- Considered and rejected: re-activating HNReader after the open (visible focus flicker, still briefly focuses the browser) and per-browser AppleScript automation like `make new tab` (deep automation integration, per-browser code, consent prompts).
+- Testing note for the next revisit: verify synthetic clicks actually land (System Events `click at` silently missed and produced false "no focus change" results; CGEvent clicks plus renderer-count/active-tab evidence are trustworthy).
+
 ### Phase 5: OpenGraph Previews (exploratory)
 
 Fetch OpenGraph metadata (title, description, image) for story URLs to show richer previews in the list.
