@@ -44,6 +44,10 @@ jobs:
       - name: Update Homebrew tap
         env:
           TAP_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          # Homebrew symbol for MACOSX_DEPLOYMENT_TARGET in project.pbxproj.
+          # brew audit checks the shipped app's minimum OS against the cask's
+          # depends_on, so the floor has to move with the release, here.
+          CASK_MACOS: tahoe
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           SHA256="${{ steps.sha.outputs.sha256 }}"
@@ -53,6 +57,7 @@ jobs:
 
           sed -i '' "s/version \".*\"/version \"${VERSION}\"/" Casks/hn-reader.rb
           sed -i '' "s/sha256 \".*\"/sha256 \"${SHA256}\"/" Casks/hn-reader.rb
+          sed -i '' "s/depends_on macos: :.*/depends_on macos: :${CASK_MACOS}/" Casks/hn-reader.rb
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

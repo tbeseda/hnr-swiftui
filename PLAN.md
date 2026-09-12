@@ -272,7 +272,7 @@ Distributed via a personal Homebrew tap. The app is unsigned -- Homebrew removes
 
 **Tap repository:** `tbeseda/homebrew-tap` on GitHub
 
-**Cask formula:** `Casks/hn-reader.rb` in the tap repo, pointing to the `.zip` artifact from GitHub Releases. Sept 2026: Homebrew 6 deprecated `postflight do` ("Calling `postflight` is deprecated! Use `postflight_steps` instead."), so the quarantine-clearing block became `postflight_steps` with `run "/usr/bin/xattr"` steps; `desc` dropped the platform word and `zap` gained `~/Library/Application Support/HNReader`; `depends_on macos:` moved to `:tahoe` with the macOS 26 target. The release workflow only rewrites `version` and `sha256`, so those were manual tap commits.
+**Cask formula:** `Casks/hn-reader.rb` in the tap repo, pointing to the `.zip` artifact from GitHub Releases. Sept 2026: Homebrew 6 deprecated `postflight do` ("Calling `postflight` is deprecated! Use `postflight_steps` instead."), so the quarantine-clearing block became `postflight_steps` with `run "/usr/bin/xattr"` steps; `desc` dropped the platform word and `zap` gained `~/Library/Application Support/HNReader`. `brew audit` compares the shipped app's minimum OS with `depends_on macos:`, so the floor can only move with a release: the workflow now rewrites it from `CASK_MACOS` (set to `tahoe` for the macOS 26 target) next to `version` and `sha256`. The other cask edits were a manual tap commit.
 
 **Install command:**
 ```sh
