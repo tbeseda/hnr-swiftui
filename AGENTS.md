@@ -105,7 +105,9 @@ The app icon lives in `HNReader/Assets.xcassets/AppIcon.appiconset/`. Source PNG
 
 ## CI / Release
 
-A GitHub Actions workflow at `.github/workflows/release.yml` builds and releases the app on `v*` tags. It runs `xcodebuild` on `macos-26`, zips the `.app` bundle, and creates a GitHub Release with auto-generated notes. No secrets or signing are configured -- the build is unsigned.
+A GitHub Actions workflow at `.github/workflows/release.yml` builds and releases the app on `v*` tags. It runs `xcodebuild` on `macos-26`, zips the `.app` bundle, and creates a GitHub Release with auto-generated notes. The build is unsigned; the only secret is the tap token.
+
+The workflow then rewrites `version` and `sha256` in `Casks/hn-reader.rb` of `tbeseda/homebrew-tap` with `sed` and pushes. Nothing else in the cask is touched, so every other cask change (the `depends_on macos:` floor, `desc`, `zap` paths, the quarantine-clearing steps) is a manual commit to the tap repo. Homebrew 6 deprecated the Ruby `postflight do` block in favor of the declarative `postflight_steps` stanza (`run "/usr/bin/xattr", args: [...], must_succeed: false`); `brew style Casks/*.rb` in the tap checks the stanza, and `brew update` prints any deprecation the tap trips. The cask's macOS floor must match this project's deployment target.
 
 ## Unread Tracking
 
