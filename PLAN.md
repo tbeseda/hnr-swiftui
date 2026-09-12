@@ -20,7 +20,7 @@ The SwiftUI app simplifies this dramatically: it fetches directly from the Algol
 - **Story retention/pruning rules** -- No local database; fetch fresh each time
 
 ### Features Dropped
-- **AI content scoring** -- The `is-ai-ish` scoring from the web service; not worth the complexity
+- **AI content scoring** -- The `is-ai-ish` keyword scoring from the web service; not worth the complexity. Revisited in Phase 7 as an on-device model classifier.
 
 - **Background polling** -- Implemented in v1 (configurable interval)
 - **New story count badge** -- Implemented in v1 (dock badge + toolbar indicator)
@@ -43,10 +43,12 @@ hnr-swiftui/
     ├── AppState.swift          # @Observable: stories, loading, error, refresh logic
     ├── HNClient.swift          # Immutable Sendable Algolia API client
     ├── Models.swift            # Story model (Decodable, Sendable, Identifiable)
+    ├── StoryClassifier.swift   # On-device AI-topic classifier (FoundationModels, macOS 26)
     └── Views/
         ├── ContentView.swift   # Toolbar (refresh, filter) + story list
         ├── StoryRowView.swift  # Single story: title, meta, hostname, time
         ├── SettingsView.swift  # macOS Settings window (Cmd+,)
+        ├── FilterPopover.swift # Toolbar filter panel: points, community, front page, AI
         ├── UnreadDivider.swift # Visual divider between new and old stories
         └── Helpers.swift       # Color.hnOrange, .pointerOnHover() modifier
 ```
@@ -134,6 +136,8 @@ final class AppState {
 | `refreshInterval` | `Int` | `300` | Background refresh interval in seconds (0 = disabled) |
 | `showDockBadge` | `Bool` | `true` | Show new story count on dock icon |
 | `openLinksInBackground` | `Bool` | `false` | Open URLs without activating browser (disabled -- browsers ignore `activates = false`) |
+| `classifyAIStories` | `Bool` | `false` | Run the on-device AI-topic classifier in the background and show the toolbar toggle (macOS 26 + Apple Intelligence) |
+| `hideAIStories` | `Bool` | `false` | Filter panel toggle: hide stories the classifier marked AI-topic |
 
 ## Unread Tracking Logic
 
@@ -149,7 +153,7 @@ This is the core UX feature. The flow:
 
 ### Divider Placement
 
-In the story list, iterate stories. When we encounter the story whose ID matches `lastSeenStoryID`, insert an `UnreadDivider` view before it. Everything above is new; everything at and below the divider was seen on the previous refresh.
+In the story list, insert an `UnreadDivider` above the first displayed story whose ID is at or below `lastSeenStoryID` (item IDs increase with time). Everything above is new; everything at and below the divider was seen on the previous refresh. Comparing IDs rather than requiring an exact match keeps the divider in place when a view filter (community posts, front page, AI) hides the last-seen story itself.
 
 ## View Layout
 
@@ -228,7 +232,7 @@ Uses `.secondary` foreground color and default divider styling.
 - [x] Added `Settings` scene to `HNReaderApp.swift` (standard `Cmd+,`)
 - [x] Removed toolbar settings popover from ContentView
 - [x] Promoted `showCommunityPosts` and `frontPageOnly` from `@State` to `@AppStorage`
-- [x] Settings use local `@State` draft -- changes apply on window close, not per-keystroke
+- [x] Settings use local `@State` draft -- changes apply on window close, not per-keystroke (removed in Phase 7: the points field moved to the filter panel, and the remaining preferences bind directly)
 - [x] Configurable background refresh interval (Never, 1m, 2m, 5m, 10m, 15m, 30m)
 - [x] Dock icon badge toggle
 - [x] `onChange(of: minPoints)` triggers re-fetch when min points changes via Settings
@@ -259,6 +263,8 @@ Fetch OpenGraph metadata (title, description, image) for story URLs to show rich
 - Is the UX improvement worth the network overhead and privacy tradeoff?
 - Should OG fetching be opt-in via Settings?
 - What's the minimal useful OG data? (description only? image thumbnail?)
+
+**Scrape findings (Sept 2026, 59 recent story URLs from a residential IP):** 4 served `text/markdown` for `Accept: text/markdown` (Cloudflare's paid-plan opt-in "Markdown for Agents"); 5 returned 403 and 1 returned 429; a Notion-hosted story had no extractable text. Jina Reader (`https://r.jina.ai/<url>`) is the free no-key markdown service: 20 requests/min per IP, cached, headless-rendered, Apache-2.0 self-host image available. No evidence that Cloudflare Workers, Fly, or Vercel egress IPs are blocked less than Lambda. macOS 26 adds a headless `WebPage` API but no public reader-mode extractor. The AI filter (Phase 7) deliberately does not depend on any of this.
 
 ### Phase 6: Homebrew Distribution
 
@@ -293,6 +299,35 @@ If revisiting App Store distribution later, the key additions are:
 - App Sandbox entitlements (`com.apple.security.app-sandbox` + `com.apple.security.network.client`)
 - App Store Connect record with metadata, screenshots, privacy policy URL
 - Archive + upload workflow (replace zip with `xcodebuild archive` + `exportArchive`)
+
+### Phase 7: AI Story Filter (experimental) -- in progress
+
+Optional filter that hides AI-topic stories, inspired by unslop.news. Uses Apple's on-device Foundation Models framework instead of a hosted LLM: no API keys to sniff or ship, nothing leaves the Mac.
+
+**Research (2026-09-11, M3 Pro, macOS 26.6.2, model "26.4"):**
+- unslop.news classifies title-only first (OpenAI gpt-5.6-luna, batched), then fetches Readability-extracted content only for title-negatives. Fails closed; hides filtered stories entirely.
+- On-device, title + hostname, one plain-text yes/no prompt per story: p50 293 ms, 0 refusals and 1 guardrail hit over 200 titles, 22-23/26 correct on hand labels. 51% of the last 200 stored stories flagged AI.
+- `@Generable` structured output with the same rubric: 30-100% refusals ("May contain sensitive content"); Apple's documented role-preamble fix didn't help. Batching 10 titles per prompt: guardrail violation every time. Adding og:description or body text: accuracy dropped 22/26 -> 20/26 and added refusals. `.contentTagging` use case: generic tags, unusable as a binary label.
+- FoundationModels weak-links with the macOS 15 deployment target; features gated with `#available(macOS 26, *)`. Context is 4096 tokens; `tokenCount(for:)` exists from 26.4. macOS 27 ships a rebuilt model.
+
+**Design:** see AGENTS.md "AI Story Filter". Title-only classification, fail open, verdict sidecar `verdicts.json` pinned to prompt + model version, view-level filter, and a display snapshot so verdicts only apply at the next refresh. No scraping dependency.
+
+- [x] `StoryClassifier` with availability reasons and versioned prompt
+- [x] `AppState` verdict store, background pass, display snapshot, pruning
+- [x] View filter + divider placement robust to hidden last-seen story
+- [x] Settings > Experimental opt-in toggle with availability / progress footer
+- [x] Toolbar control to hide/show AI stories instantly; classification keeps running while hiding is off. First cut was a `sparkles` toggle with a hidden-count badge (pressed-means-hidden was counterintuitive, bare count uninformative); second was a segmented "All N | No AI M" picker (clear but too wordy for the toolbar); landed as a toggle inside a toolbar filter popover with the counts in words
+- [x] Toolbar filter button + `FilterPopover`: minimum points, community posts, front page, hide AI, and a "Showing X of Y" line, all applying immediately; Settings shrinks to behavior + experimental
+- [x] `applyThreshold`: threshold changes re-render from the store and fan out only when lowered, without moving the unread divider; superseded fan-outs are cancelled via `.task(id: minPoints)`
+- [x] Settings label "AI story filter" renamed to "Classify stories with Apple Intelligence" after it read as the filter itself; the panel's Hide AI toggle now turns classification on by itself
+- [x] Points field no longer grabs focus when the panel opens
+- [x] Second tuning round after real use showed ~70% precision ("How Poor People Buy Cars", "Project Blinkenlights", "bzip3" flagged): built an 82-hard-negative / 44-positive set from the flagged list. Permissive rubric 69/82 FP; strict "default is no" prompt 0/82 FP but 15/44 FN; a keyword pre-pass (the old `is-ai-ish` idea, conservative list) catches 37/44 with 0 FP. Shipped as prompt v2: keywords first, strict model second -- 0 FP / 4 FN on the set, ~20% of stories settled without the model
+- [ ] Live with v2: watch for misses on AI coding tools whose titles never name AI (Astra, harness, RTK)
+- [x] New-story count excludes AI stories while hiding: the background check classifies its finds inline before counting
+- [x] First tuning round: "When nothing in the title indicates AI, answer no." -- 34 labeled titles went 27 correct / 5 FP / 2 FN -> 28 / 2 FP / 4 FN. Remaining misses: "Remember Hong Kong" and a kids' programming language flagged AI; two AI-coding posts and one "OpenAI's methods" headline missed.
+- [ ] Live with it: audit false positives against real usage, tune `instructions`, bump `promptVersion`
+- [ ] Optional: collapsed row or "show hidden" affordance for auditing false positives
+- [ ] Optional: "Fetch article previews" toggle (Phase 5), independent of the filter
 
 ## Xcode Project
 

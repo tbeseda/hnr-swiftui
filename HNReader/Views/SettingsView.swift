@@ -1,34 +1,20 @@
 import SwiftUI
 
+/// Preferences that rarely change. View filters (points threshold, community
+/// posts, front page, AI) live in the toolbar filter panel instead.
 struct SettingsView: View {
-    @AppStorage("minPoints") private var minPoints = 35
-    @AppStorage("showCommunityPosts") private var showCommunityPosts = true
-    @AppStorage("frontPageOnly") private var frontPageOnly = false
     @AppStorage("openLinksInBackground") private var openLinksInBackground = false
     @AppStorage("refreshInterval") private var refreshInterval = 300
     @AppStorage("showDockBadge") private var showDockBadge = true
+    @AppStorage("classifyAIStories") private var classifyAIStories = false
+    @Environment(AppState.self) private var appState
 
-    @State private var draft = Draft()
-
-    struct Draft {
-        var minPoints = 35
-        var showCommunityPosts = true
-        var frontPageOnly = false
-        var openLinksInBackground = false
-        var refreshInterval = 300
-        var showDockBadge = true
-    }
+    @State private var classifierUnavailableReason: String?
 
     var body: some View {
         Form {
-            Section("Stories") {
-                TextField("Minimum points", value: $draft.minPoints, format: .number)
-                Toggle("Show community posts", isOn: $draft.showCommunityPosts)
-                Toggle("Front page only", isOn: $draft.frontPageOnly)
-            }
-
             Section("Behavior") {
-                Picker("Background refresh", selection: $draft.refreshInterval) {
+                Picker("Background refresh", selection: $refreshInterval) {
                     Text("Never").tag(0)
                     Text("1 minute").tag(60)
                     Text("2 minutes").tag(120)
@@ -37,29 +23,38 @@ struct SettingsView: View {
                     Text("15 minutes").tag(900)
                     Text("30 minutes").tag(1800)
                 }
-                Toggle("Dock icon badge", isOn: $draft.showDockBadge)
+                Toggle("Dock icon badge", isOn: $showDockBadge)
                 Toggle("Open links in background", isOn: .constant(false))
                     .disabled(true)
                     .help("Not yet supported — browsers override background open requests")
+            }
+
+            Section {
+                Toggle("Classify stories with Apple Intelligence", isOn: $classifyAIStories)
+                    .disabled(classifierUnavailableReason != nil)
+            } header: {
+                Text("Experimental")
+            } footer: {
+                Text(classifierStatus)
             }
         }
         .formStyle(.grouped)
         .frame(width: 350)
         .fixedSize()
         .onAppear {
-            draft.minPoints = minPoints
-            draft.showCommunityPosts = showCommunityPosts
-            draft.frontPageOnly = frontPageOnly
-            draft.refreshInterval = refreshInterval
-            draft.showDockBadge = showDockBadge
-        }
-        .onDisappear {
-            minPoints = draft.minPoints
-            showCommunityPosts = draft.showCommunityPosts
-            frontPageOnly = draft.frontPageOnly
             openLinksInBackground = false
-            refreshInterval = draft.refreshInterval
-            showDockBadge = draft.showDockBadge
+            classifierUnavailableReason = StoryClassifier.unavailableReason
         }
+    }
+
+    private var classifierStatus: String {
+        if let reason = classifierUnavailableReason {
+            return reason
+        }
+        guard classifyAIStories else {
+            return "Runs the on-device model in the background so the toolbar filter panel can hide AI stories. Turning on Hide AI stories there enables this too. Nothing leaves this Mac."
+        }
+        let progress = appState.classificationProgress
+        return "\(progress.classified) of \(progress.total) stories classified. Hide or show them from the toolbar filter panel. Turn this off to stop classifying."
     }
 }
