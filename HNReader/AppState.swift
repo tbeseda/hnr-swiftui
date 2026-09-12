@@ -217,9 +217,7 @@ final class AppState {
     /// iteration, so stories stored mid-pass are picked up. Results reach the
     /// displayed list only at the next refresh, via the `verdicts` snapshot.
     func classifyPendingStories() {
-        guard #available(macOS 26, *),
-              classifyTask == nil,
-              StoryClassifier.unavailableReason == nil else { return }
+        guard classifyTask == nil, StoryClassifier.unavailableReason == nil else { return }
 
         classifyTask = Task {
             var unsaved = 0
@@ -247,14 +245,13 @@ final class AppState {
     /// handful a background check finds; the backlog pass skips stories
     /// classified here because it re-derives its pending list.
     private func classifyNow(_ stories: [Story]) async {
-        guard #available(macOS 26, *), StoryClassifier.unavailableReason == nil else { return }
+        guard StoryClassifier.unavailableReason == nil else { return }
         for story in stories where storedVerdicts[story.storyID]?.isCurrent != true {
             await classifyAndStore(story)
         }
         saveVerdicts()
     }
 
-    @available(macOS 26, *)
     private func classifyAndStore(_ story: Story) async {
         let verdict = await classifier.classify(story)
         storedVerdicts[story.storyID] = StoredVerdict(

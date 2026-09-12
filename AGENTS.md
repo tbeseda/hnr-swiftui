@@ -12,7 +12,7 @@ HNReader is a native macOS windowed app for browsing Hacker News stories in reve
 
 ## Architecture
 
-Pure SwiftUI, macOS 15+ (Sequoia) deployment target. The app uses a single `WindowGroup` scene.
+Pure SwiftUI, macOS 26+ (Tahoe) deployment target. Older macOS is deliberately unsupported: the on-device classifier needs the macOS 26 Foundation Models framework, and a single target keeps availability gating out of the code. The app uses a single `WindowGroup` scene.
 
 Application state lives in a single `AppState` object (`@Observable` + `.environment()`). The API client (`HNClient`) is immutable and `Sendable`, and so is the on-device `StoryClassifier`. User preferences (`minPoints`, `lastSeenStoryID`) persist via `@AppStorage`.
 
@@ -48,7 +48,7 @@ If a feature requires deeper AppKit integration, reconsider whether it's needed.
 
 **Read-only.** The app only reads from the HN Firebase API. No write operations, no authentication.
 
-**No external dependencies.** Pure SwiftUI with Foundation. No third-party packages. System frameworks newer than the deployment target are fine when the linker weak-links them and every use is gated with `#available` -- FoundationModels (macOS 26) is the one such case.
+**No external dependencies.** Pure SwiftUI with Foundation and Apple system frameworks (FoundationModels for the classifier). No third-party packages.
 
 **Fixed timestamp format.** Use relative time display ("2h ago", "15m ago") for story ages. When absolute timestamps are needed, use `M-d HH:mm` (no leading zeros on month/day, year omitted for brevity), not locale-dependent formatting.
 
@@ -105,7 +105,7 @@ The app icon lives in `HNReader/Assets.xcassets/AppIcon.appiconset/`. Source PNG
 
 ## CI / Release
 
-A GitHub Actions workflow at `.github/workflows/release.yml` builds and releases the app on `v*` tags. It runs `xcodebuild` on `macos-15`, zips the `.app` bundle, and creates a GitHub Release with auto-generated notes. No secrets or signing are configured -- the build is unsigned.
+A GitHub Actions workflow at `.github/workflows/release.yml` builds and releases the app on `v*` tags. It runs `xcodebuild` on `macos-26`, zips the `.app` bundle, and creates a GitHub Release with auto-generated notes. No secrets or signing are configured -- the build is unsigned.
 
 ## Unread Tracking
 
@@ -118,7 +118,7 @@ The core UX feature is a visible divider line in the story list:
 
 ## AI Story Filter (experimental)
 
-Two settings. `classifyAIStories` runs the classifier: each stored story's title + hostname is classified as AI-topic or not with Apple's on-device Foundation Models framework, in the background. `hideAIStories` is the "Hide AI stories" toggle in the toolbar filter panel, a view filter alongside the community-post and front-page filters, with "N of M stories are AI" spelled out beneath it. The panel shows the toggle whenever the model is available, and turning it on also turns classification on, so the one-click path works without a trip to Settings; Settings > Experimental > "Classify stories with Apple Intelligence" is the switch to turn classification back off. (An earlier Settings label, "AI story filter", read as if it were the filter itself.) (Earlier cuts -- a pressed `sparkles` toggle meaning "hidden", then a segmented "All N | No AI M" picker -- tested as counterintuitive and too wordy for the toolbar respectively.) The split matters: the user wants to hide AI bursts for a while and bring them back, so classification must keep running while hiding is off, otherwise a quick "hide" would find the newest stories unclassified. Requires macOS 26 with Apple Intelligence enabled; `StoryClassifier.unavailableReason` explains why the Settings toggle is disabled, and the panel omits the AI toggle entirely. No network, no API keys, nothing leaves the Mac.
+Two settings. `classifyAIStories` runs the classifier: each stored story's title + hostname is classified as AI-topic or not with Apple's on-device Foundation Models framework, in the background. `hideAIStories` is the "Hide AI stories" toggle in the toolbar filter panel, a view filter alongside the community-post and front-page filters, with "N of M stories are AI" spelled out beneath it. The panel shows the toggle whenever the model is available, and turning it on also turns classification on, so the one-click path works without a trip to Settings; Settings > Experimental > "Classify stories with Apple Intelligence" is the switch to turn classification back off. (An earlier Settings label, "AI story filter", read as if it were the filter itself.) (Earlier cuts -- a pressed `sparkles` toggle meaning "hidden", then a segmented "All N | No AI M" picker -- tested as counterintuitive and too wordy for the toolbar respectively.) The split matters: the user wants to hide AI bursts for a while and bring them back, so classification must keep running while hiding is off, otherwise a quick "hide" would find the newest stories unclassified. Requires Apple Intelligence to be enabled on an Apple silicon Mac; `StoryClassifier.unavailableReason` explains why the Settings toggle is disabled, and the panel omits the AI toggle entirely. No network, no API keys, nothing leaves the Mac.
 
 **Two stages, and the prompt shape is load-bearing.** `StoryClassifier` first checks the title and host against keyword lists (AI, LLM, GPT, OpenAI, Claude, "machine learning", openai.com, ...); a hit is `.ai` with no model call, which settles ~20% of the store instantly. Only the rest go to the model, with a strict "default is no" prompt. Measured Sept 2026 on the "26.4" model against 82 hard negatives (generic titles a permissive prompt had flagged: "bzip3", "Audacity 4.0", "Haiku R1" the OS) and 44 clear positives: the permissive rubric flagged 69/82 negatives; the strict prompt alone flagged 0/82 but missed 15/44 positives, mostly titles that literally say "AI"; keywords catch 37/44 with 0/82 false positives; combined, 0 false positives and 4 misses (AI coding tools the title never names). Keep the keyword lists conservative -- Cursor, Grok, Haiku, Astra, agent, and model are all common words elsewhere. Prefer fewer false positives: a hidden story is a silent loss, a shown AI story is a visible nuisance.
 

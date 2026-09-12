@@ -57,7 +57,6 @@ struct StoryClassifier: Sendable {
 
     /// Why the classifier can't run right now, or nil when it can
     static var unavailableReason: String? {
-        guard #available(macOS 26, *) else { return "Requires macOS 26" }
         switch SystemLanguageModel.default.availability {
         case .available:
             return nil
@@ -100,7 +99,6 @@ struct StoryClassifier: Sendable {
     Everything else is no: programming languages, developer tools, hardware, operating systems, security, science, business, politics, and products with no AI angle in the title. A vague or generic title is no. Do not guess at AI content that the title does not mention.
     """
 
-    @available(macOS 26, *)
     func classify(_ story: Story) async -> AIVerdict {
         if Self.namesAI(story) { return .ai }
 

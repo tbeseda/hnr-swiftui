@@ -308,7 +308,7 @@ Optional filter that hides AI-topic stories, inspired by unslop.news. Uses Apple
 - unslop.news classifies title-only first (OpenAI gpt-5.6-luna, batched), then fetches Readability-extracted content only for title-negatives. Fails closed; hides filtered stories entirely.
 - On-device, title + hostname, one plain-text yes/no prompt per story: p50 293 ms, 0 refusals and 1 guardrail hit over 200 titles, 22-23/26 correct on hand labels. 51% of the last 200 stored stories flagged AI.
 - `@Generable` structured output with the same rubric: 30-100% refusals ("May contain sensitive content"); Apple's documented role-preamble fix didn't help. Batching 10 titles per prompt: guardrail violation every time. Adding og:description or body text: accuracy dropped 22/26 -> 20/26 and added refusals. `.contentTagging` use case: generic tags, unusable as a binary label.
-- FoundationModels weak-links with the macOS 15 deployment target; features gated with `#available(macOS 26, *)`. Context is 4096 tokens; `tokenCount(for:)` exists from 26.4. macOS 27 ships a rebuilt model.
+- FoundationModels weak-links with the macOS 15 deployment target; features gated with `#available(macOS 26, *)`. (Moot since the deployment target was raised to macOS 26 right after the merge; the gating was removed.) Context is 4096 tokens; `tokenCount(for:)` exists from 26.4. macOS 27 ships a rebuilt model.
 
 **Design:** see AGENTS.md "AI Story Filter". Title-only classification, fail open, verdict sidecar `verdicts.json` pinned to prompt + model version, view-level filter, and a display snapshot so verdicts only apply at the next refresh. No scraping dependency.
 

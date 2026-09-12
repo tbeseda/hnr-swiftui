@@ -31,7 +31,7 @@ Stories load on launch and can be refreshed manually. A divider line separates n
 - Click a story title to open the link in your browser
 - Click the comment count to open the HN discussion
 - The filter button in the toolbar holds the minimum points threshold, community posts, and front page filters
-- Experimental: **Hide AI stories** in the filter panel classifies titles with the on-device Apple Intelligence model. Requires macOS 26 with Apple Intelligence enabled. Nothing leaves your Mac. Turn classification off again under **Settings > Experimental**.
+- Experimental: **Hide AI stories** in the filter panel classifies titles with the on-device Apple Intelligence model. Requires Apple Intelligence to be enabled. Nothing leaves your Mac. Turn classification off again under **Settings > Experimental**.
 
 ## Build from source
 
@@ -39,4 +39,4 @@ Stories load on launch and can be refreshed manually. A divider line separates n
 xcodebuild -project HNReader.xcodeproj -scheme HNReader -configuration Release build
 ```
 
-Requires Xcode 26+ and macOS 15+.
+Requires Xcode 26+ and macOS 26+.
