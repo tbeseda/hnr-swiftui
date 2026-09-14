@@ -84,13 +84,9 @@ struct ContentView: View {
                             .controlSize(.small)
                     } else {
                         Label("Refresh", systemImage: "arrow.clockwise")
-                            .overlay(alignment: .topTrailing) {
-                                if appState.newStoryCount > 0 {
-                                    newStoryBadge(appState.newStoryCount)
-                                }
-                            }
                     }
                 }
+                .badge(appState.newStoryCount)
                 .keyboardShortcut("r", modifiers: .command)
                 .disabled(appState.isLoading)
             }
@@ -213,18 +209,6 @@ struct ContentView: View {
             return false
         }
         return !appState.previousStoryIDs.contains(story.storyID)
-    }
-
-    /// New-story count pinned to the refresh icon's corner
-    private func newStoryBadge(_ count: Int) -> some View {
-        Text("\(count)")
-            .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 3)
-            .padding(.vertical, 1)
-            .background(Color.hnOrange, in: Capsule())
-            .fixedSize()
-            .offset(x: 10, y: -6)
     }
 
     private func updateDockBadge() {
