@@ -67,7 +67,7 @@ struct Story: Identifiable, Hashable, Sendable, Codable {
         return Self.olderDateFormatter.string(from: date)
     }
 
-    /// Absolute posting time in the app's fixed `M-d HH:mm` format
+    /// Absolute posting time in the app's fixed `yyyy-MM-dd HH:mm` format
     var postedLabel: String {
         Self.postedDateFormatter.string(from: Date(timeIntervalSince1970: Double(createdAtTimestamp)))
     }
@@ -82,7 +82,7 @@ struct Story: Identifiable, Hashable, Sendable, Codable {
     private static let postedDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "M-d HH:mm"
+        f.dateFormat = "yyyy-MM-dd HH:mm"
         return f
     }()
 

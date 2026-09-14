@@ -50,7 +50,7 @@ If a feature requires deeper AppKit integration, reconsider whether it's needed.
 
 **No external dependencies.** Pure SwiftUI with Foundation and Apple system frameworks (FoundationModels for the classifier). No third-party packages.
 
-**Fixed timestamp format.** Use relative time display ("2h ago", "15m ago") for story ages. When absolute timestamps are needed, use `M-d HH:mm` (no leading zeros on month/day, year omitted for brevity), not locale-dependent formatting.
+**Fixed timestamp format.** Use relative time display ("2h ago", "15m ago") for story ages. When absolute timestamps are needed, use `yyyy-MM-dd HH:mm`, not locale-dependent formatting.
 
 ## API Details
 
