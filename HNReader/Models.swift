@@ -67,10 +67,22 @@ struct Story: Identifiable, Hashable, Sendable, Codable {
         return Self.olderDateFormatter.string(from: date)
     }
 
+    /// Absolute posting time in the app's fixed `M-d HH:mm` format
+    var postedLabel: String {
+        Self.postedDateFormatter.string(from: Date(timeIntervalSince1970: Double(createdAtTimestamp)))
+    }
+
     private static let olderDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "EEE HH:mm"
+        return f
+    }()
+
+    private static let postedDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "M-d HH:mm"
         return f
     }()
 

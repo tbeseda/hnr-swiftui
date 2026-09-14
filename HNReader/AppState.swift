@@ -204,6 +204,13 @@ final class AppState {
         verdicts = storedVerdicts.mapValues(\.verdict)
     }
 
+    /// The latest stored verdict for a story, for display in the row's
+    /// expanded metadata. Read-only and not what the list filters by; that
+    /// is the `verdicts` snapshot.
+    func storedVerdict(for storyID: String) -> StoredVerdict? {
+        storedVerdicts[storyID]
+    }
+
     /// Stored stories with a verdict from the current prompt and model, out
     /// of all stored stories -- the Settings status line
     var classificationProgress: (classified: Int, total: Int) {

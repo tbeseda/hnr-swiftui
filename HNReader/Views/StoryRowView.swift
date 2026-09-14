@@ -8,7 +8,9 @@ struct StoryRowView: View {
     var isVisited = false
     var onVisit: () -> Void = {}
 
+    @Environment(AppState.self) private var appState
     @AppStorage("openLinksInBackground") private var openLinksInBackground = false
+    @AppStorage("classifyAIStories") private var classifyAIStories = false
     @State private var isExpanded = false
 
     var body: some View {
@@ -79,12 +81,7 @@ struct StoryRowView: View {
                 .foregroundStyle(.secondary)
 
                 if isExpanded {
-                    Label(story.author, systemImage: "person")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .contentShape(Rectangle())
-                        .onTapGesture { openURL(authorURL) }
-                        .linkHover(authorURL)
+                    metadata
                         .padding(.top, 2)
 
                     if let text = story.plainStoryText {
@@ -106,6 +103,79 @@ struct StoryRowView: View {
         .alignmentGuide(.listRowSeparatorLeading) { d in
             d[.leading] + gutter
         }
+    }
+
+    /// Story attributes not worth a place in the collapsed row: author,
+    /// absolute time, full link, HN item ID, raw tags, and the AI verdict
+    private var metadata: some View {
+        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 2) {
+            metadataRow("Author") {
+                Text(story.author)
+                    .contentShape(Rectangle())
+                    .onTapGesture { openURL(authorURL) }
+                    .linkHover(authorURL)
+            }
+            metadataRow("Posted") {
+                Text(story.postedLabel)
+                    .monospacedDigit()
+            }
+            if let url = story.url {
+                metadataRow("Link") {
+                    Text(url)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onVisit()
+                            openURL(story.linkURL)
+                        }
+                        .linkHover(story.linkURL)
+                }
+            }
+            metadataRow("ID") {
+                Text(story.storyID)
+                    .monospacedDigit()
+                    .contentShape(Rectangle())
+                    .onTapGesture { openURL(story.hnURL) }
+                    .linkHover(story.hnURL)
+            }
+            metadataRow("Tags") {
+                Text(story.tags.joined(separator: ", "))
+            }
+            if let verdictLabel {
+                metadataRow("AI") {
+                    Text(verdictLabel)
+                }
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
+    private func metadataRow<Content: View>(_ key: String, @ViewBuilder content: () -> Content) -> some View {
+        GridRow {
+            Text(key)
+                .foregroundStyle(.tertiary)
+                .gridColumnAlignment(.trailing)
+            content()
+        }
+    }
+
+    /// The stored verdict with the prompt and model that produced it, or the
+    /// pending state while classification is on. Nil hides the row when the
+    /// feature is off and nothing was ever classified.
+    private var verdictLabel: String? {
+        guard let stored = appState.storedVerdict(for: story.storyID) else {
+            return classifyAIStories ? "Not yet classified" : nil
+        }
+        let verdict: String
+        switch stored.verdict {
+        case .ai: verdict = "AI topic"
+        case .notAI: verdict = "Not AI"
+        case .unknown: verdict = "Unknown (model gave no answer)"
+        }
+        let stale = stored.isCurrent ? "" : ", stale"
+        return "\(verdict) (prompt v\(stored.promptVersion), model \(stored.modelVersion)\(stale))"
     }
 
     private var authorURL: URL {
