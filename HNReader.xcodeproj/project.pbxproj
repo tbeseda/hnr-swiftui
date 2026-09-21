@@ -18,6 +18,8 @@
 		A10000000000000000000A = {isa = PBXBuildFile; fileRef = B10000000000000000000A; };
 		A10000000000000000000B = {isa = PBXBuildFile; fileRef = B10000000000000000000B; };
 		A10000000000000000000C = {isa = PBXBuildFile; fileRef = B10000000000000000000C; };
+		A10000000000000000000D = {isa = PBXBuildFile; fileRef = B10000000000000000000D; };
+		A10000000000000000000E = {isa = PBXBuildFile; fileRef = B10000000000000000000E; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +35,8 @@
 		B10000000000000000000A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
 		B10000000000000000000B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StoryClassifier.swift"; sourceTree = "<group>"; };
 		B10000000000000000000C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FilterPopover.swift"; sourceTree = "<group>"; };
+		B10000000000000000000D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteConfig.swift"; sourceTree = "<group>"; };
+		B10000000000000000000E = {isa = PBXFileReference; lastKnownFileType = text.json; path = "RemoteConfig.json"; sourceTree = "<group>"; };
 		C100000000000000000001 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HNReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -41,12 +45,12 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXResourcesBuildPhase section */
-		D100000000000000000003 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A100000000000000000009); runOnlyForDeploymentPostprocessing = 0; };
+		D100000000000000000003 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A100000000000000000009, A10000000000000000000E); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXGroup section */
 		E100000000000000000001 = {isa = PBXGroup; children = (E100000000000000000002, E100000000000000000004); sourceTree = "<group>"; };
-		E100000000000000000002 = {isa = PBXGroup; children = (B100000000000000000001, B100000000000000000002, B100000000000000000003, B100000000000000000004, B10000000000000000000B, B100000000000000000009, E100000000000000000003); path = HNReader; sourceTree = "<group>"; };
+		E100000000000000000002 = {isa = PBXGroup; children = (B100000000000000000001, B100000000000000000002, B100000000000000000003, B100000000000000000004, B10000000000000000000B, B10000000000000000000D, B10000000000000000000E, B100000000000000000009, E100000000000000000003); path = HNReader; sourceTree = "<group>"; };
 		E100000000000000000003 = {isa = PBXGroup; children = (B100000000000000000005, B100000000000000000006, B100000000000000000007, B100000000000000000008, B10000000000000000000A, B10000000000000000000C); path = Views; sourceTree = "<group>"; };
 		E100000000000000000004 = {isa = PBXGroup; children = (C100000000000000000001); name = Products; sourceTree = "<group>"; };
 /* End PBXGroup section */
@@ -60,7 +64,7 @@
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		D100000000000000000002 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A100000000000000000001, A100000000000000000002, A100000000000000000003, A100000000000000000004, A100000000000000000005, A100000000000000000006, A100000000000000000007, A100000000000000000008, A10000000000000000000A, A10000000000000000000B, A10000000000000000000C); runOnlyForDeploymentPostprocessing = 0; };
+		D100000000000000000002 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A100000000000000000001, A100000000000000000002, A100000000000000000003, A100000000000000000004, A100000000000000000005, A100000000000000000006, A100000000000000000007, A100000000000000000008, A10000000000000000000A, A10000000000000000000B, A10000000000000000000C, A10000000000000000000D); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */

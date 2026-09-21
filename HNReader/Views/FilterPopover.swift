@@ -74,7 +74,7 @@ struct FilterPopover: View {
 
     private var aiStatus: String {
         guard classifyAIStories else {
-            return "Classifies titles on this Mac with Apple Intelligence"
+            return "Classifies titles on this Mac, and reads page descriptions for the past week's stories"
         }
         let progress = appState.classificationProgress
         if progress.classified < progress.total {

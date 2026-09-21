@@ -45,6 +45,18 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 550, minHeight: 400)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // The one classifier problem worth a notice: the filter keeps
+            // working, but on whatever keyword list loaded last
+            if classifyAIStories, let message = appState.remoteConfigError {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.bar)
+            }
+        }
         .overlay(alignment: .bottomLeading) {
             if let url = appState.hoveredURL {
                 Text(url.absoluteString)
@@ -125,6 +137,7 @@ struct ContentView: View {
             // Re-check: the user may have just enabled Apple Intelligence
             classifierAvailable = StoryClassifier.unavailableReason == nil
             if classifierEnabled {
+                appState.loadRemoteConfig()
                 appState.classifyPendingStories()
             } else {
                 appState.stopClassifying()

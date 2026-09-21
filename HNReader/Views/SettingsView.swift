@@ -52,9 +52,11 @@ struct SettingsView: View {
             return reason
         }
         guard classifyAIStories else {
-            return "Runs the on-device model in the background so the toolbar filter panel can hide AI stories. Turning on Hide AI stories there enables this too. Nothing leaves this Mac."
+            return "Runs the on-device model in the background so the toolbar filter panel can hide AI stories. Turning on Hide AI stories there enables this too. Titles never leave this Mac; the app does fetch page descriptions for the past week's stories, and its keyword list from GitHub."
         }
         let progress = appState.classificationProgress
-        return "\(progress.classified) of \(progress.total) stories classified. Hide or show them from the toolbar filter panel. Turn this off to stop classifying."
+        let status = "\(progress.classified) of \(progress.total) stories classified. Hide or show them from the toolbar filter panel. Turn this off to stop classifying."
+        guard let configError = appState.remoteConfigError else { return status }
+        return status + "\n\n" + configError
     }
 }

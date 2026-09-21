@@ -21,15 +21,10 @@ struct Story: Identifiable, Hashable, Sendable, Codable {
     /// Self-post text with HTML stripped and entities decoded
     var plainStoryText: String? {
         guard let storyText, !storyText.isEmpty else { return nil }
-        var text = storyText
+        let text = storyText
             .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-            .replacingOccurrences(of: "&amp;", with: "&")
-            .replacingOccurrences(of: "&lt;", with: "<")
-            .replacingOccurrences(of: "&gt;", with: ">")
-            .replacingOccurrences(of: "&quot;", with: "\"")
-            .replacingOccurrences(of: "&#x27;", with: "'")
-            .replacingOccurrences(of: "&#x2F;", with: "/")
-        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .decodingHTMLEntities
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         return text.isEmpty ? nil : text
     }
 
@@ -112,5 +107,18 @@ struct Story: Identifiable, Hashable, Sendable, Codable {
         self.createdAtTimestamp = time
         self.tags = tags
         self.storyText = item.text
+    }
+}
+
+extension String {
+    /// Decodes the HTML entities HN item text and page metadata use
+    var decodingHTMLEntities: String {
+        replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#x27;", with: "'")
+            .replacingOccurrences(of: "&#39;", with: "'")
+            .replacingOccurrences(of: "&#x2F;", with: "/")
     }
 }

@@ -161,9 +161,9 @@ struct StoryRowView: View {
         }
     }
 
-    /// The stored verdict with the prompt and model that produced it, or the
-    /// pending state while classification is on. Nil hides the row when the
-    /// feature is off and nothing was ever classified.
+    /// The stored verdict with the stage, prompt, and model that produced
+    /// it, or the pending state while classification is on. Nil hides the
+    /// row when the feature is off and nothing was ever classified.
     private var verdictLabel: String? {
         guard let stored = appState.storedVerdict(for: story.storyID) else {
             return classifyAIStories ? "Not yet classified" : nil
@@ -174,8 +174,15 @@ struct StoryRowView: View {
         case .notAI: verdict = "Not AI"
         case .unknown: verdict = "Unknown (model gave no answer)"
         }
+        let source: String
+        switch stored.source {
+        case .title: source = "title keywords, "
+        case .model: source = "on-device model, "
+        case .page: source = "page description, "
+        case nil: source = ""
+        }
         let stale = stored.isCurrent ? "" : ", stale"
-        return "\(verdict) (prompt v\(stored.promptVersion), model \(stored.modelVersion)\(stale))"
+        return "\(verdict) (\(source)prompt v\(stored.promptVersion), model \(stored.modelVersion)\(stale))"
     }
 
     private var authorURL: URL {

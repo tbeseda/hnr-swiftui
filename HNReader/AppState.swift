@@ -7,6 +7,10 @@ final class AppState {
     var error: String?
     var hoveredURL: URL?
 
+    /// Why the last fetch of the remote keyword list failed, for the notice
+    /// under the toolbar while classification is on. Nil once a fetch succeeds.
+    var remoteConfigError: String?
+
     /// Count of new stories found by background checks
     var newStoryCount = 0
 
@@ -20,7 +24,10 @@ final class AppState {
     private(set) var verdicts: [String: AIVerdict] = [:]
 
     private let client = HNClient()
-    private let classifier = StoryClassifier()
+    /// Starts on the bundled keyword lists; `loadRemoteConfig` swaps in the
+    /// GitHub copy. A struct, so swapping is one assignment and the running
+    /// classifier pass picks it up at its next story.
+    private var classifier = StoryClassifier(keywords: RemoteConfig.bundled.aiKeywords)
 
     /// Canonical accumulation of every qualifying story the app has seen,
     /// keyed by ID and persisted across launches. The HN API's ranked lists
@@ -72,9 +79,11 @@ final class AppState {
     }
 
     /// Phase 2: settle scores and discover risers over the network, then
-    /// re-render from the store. With `classify` on, a background pass then
-    /// picks up whatever the fan-out stored.
+    /// re-render from the store. With `classify` on, the keyword lists are
+    /// refreshed from GitHub alongside, and a background pass then picks up
+    /// whatever the fan-out stored.
     func finishRefresh(minPoints: Int, classify: Bool) async {
+        if classify { loadRemoteConfig() }
         do {
             let result = try await client.fetchStories(minPoints: minPoints, checkedIDs: checkedIDs)
             checkedIDs.formUnion(result.belowThresholdIDs)
@@ -248,6 +257,40 @@ final class AppState {
         classifyTask = nil
     }
 
+    /// Refreshes the keyword lists from this repo on GitHub, so a new AI
+    /// product name applies without a release. Its own task: the refresh
+    /// that triggers it shouldn't wait on GitHub. A failure keeps the lists
+    /// already in use and is reported in `remoteConfigError`.
+    func loadRemoteConfig() {
+        Task {
+            do {
+                let config = try await RemoteConfig.fetch()
+                classifier = StoryClassifier(keywords: config.aiKeywords)
+                remoteConfigError = nil
+                reapplyKeywords()
+            } catch {
+                remoteConfigError = "Couldn't fetch the AI keyword list from GitHub: \(RemoteConfig.describe(error)). Classifying with the last list that loaded."
+            }
+        }
+    }
+
+    /// Runs the keyword stage over every stored story not already AI.
+    /// Microseconds per story, so a new list takes effect at once instead
+    /// of waiting for a full reclassification. Upward only: a title the
+    /// list no longer names keeps its verdict until the next prompt
+    /// version, and page descriptions aren't stored, so a new term reaches
+    /// them only for stories classified from now on.
+    private func reapplyKeywords() {
+        var changed = false
+        for story in storedStories.values where storedVerdicts[story.storyID]?.verdict != .ai {
+            if let verdict = classifier.keywordVerdict(for: story) {
+                storedVerdicts[story.storyID] = verdict
+                changed = true
+            }
+        }
+        if changed { saveVerdicts() }
+    }
+
     /// Classifies specific stories right away, awaiting each one. For the
     /// handful a background check finds; the backlog pass skips stories
     /// classified here because it re-derives its pending list.
@@ -260,12 +303,7 @@ final class AppState {
     }
 
     private func classifyAndStore(_ story: Story) async {
-        let verdict = await classifier.classify(story)
-        storedVerdicts[story.storyID] = StoredVerdict(
-            verdict: verdict,
-            promptVersion: StoryClassifier.promptVersion,
-            modelVersion: StoryClassifier.modelVersion
-        )
+        storedVerdicts[story.storyID] = await classifier.classify(story)
     }
 
     /// Newest stored story without a verdict from the current prompt and model

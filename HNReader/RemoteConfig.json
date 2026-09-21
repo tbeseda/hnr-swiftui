@@ -1,0 +1,29 @@
+{
+  "about": "HNReader remote configuration. Fetched from this file on the main branch while story classification is on, and bundled into the app as the fallback. Namespaced by top-level key; unknown keys are ignored. See AGENTS.md, AI Story Filter.",
+  "schemaVersion": 1,
+  "aiKeywords": {
+    "terms": [
+      "AI", "AGI", "LLMs?", "GPT", "ChatGPT", "OpenAI", "Anthropic", "Claude", "Gemini",
+      "DeepMind", "DeepSeek", "Qwen", "Llama", "Mistral", "Midjourney", "Copilot", "Codex", "Ollama",
+      "Fable \\d", "Mythos (?:Preview|\\d)", "Grok \\d", "xAI", "GenAI", "MCP", "RAG",
+      "GLM-?\\d", "Kimi K\\d", "Gemma \\d", "Veo \\d", "Nemotron", "ElevenLabs",
+      "PyTorch", "TensorFlow", "LangChain", "LlamaIndex"
+    ],
+    "phrases": [
+      "machine learning", "artificial intelligence", "deep learning", "neural net", "language model",
+      "generative", "chatbot", "agentic", "stable diffusion", "diffusion model", "vllm", "hugging ?face",
+      "foundation model", "frontier model", "frontier lab", "vibe.?cod", "prompt injection",
+      "model context protocol", "superintelligen", "text-to-(?:image|video)", "coding agent",
+      "reinforcement learning", "embeddings"
+    ],
+    "hosts": [
+      "openai", "anthropic", "claude", "chatgpt", "deepseek", "deepmind", "mistral\\.ai", "huggingface",
+      "ollama", "midjourney", "(?:^|\\.)x\\.ai$", "(?:^|\\.)z\\.ai$", "qwen\\.ai", "stepfun\\.com",
+      "perplexity\\.ai", "cursor\\.com", "cursor\\.sh", "windsurf\\.com", "cognition\\.ai", "together\\.ai",
+      "fireworks\\.ai", "groq\\.com", "cerebras", "elevenlabs", "stability\\.ai", "character\\.ai",
+      "lmarena", "interconnects\\.ai", "sakana\\.ai", "inceptionlabs\\.ai", "ai\\.meta\\.com", "ai\\.google",
+      "langchain", "pytorch\\.org", "replicate\\.com", "runwayml", "lovable\\.dev", "bolt\\.new",
+      "v0\\.(?:dev|app)", "latent\\.space", "alignmentforum\\.org"
+    ]
+  }
+}

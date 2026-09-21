@@ -31,7 +31,7 @@ Stories load on launch and can be refreshed manually. A divider line separates n
 - Click a story title to open the link in your browser
 - Click the comment count to open the HN discussion
 - The filter button in the toolbar holds the minimum points threshold, community posts, and front page filters
-- Experimental: **Hide AI stories** in the filter panel classifies titles with the on-device Apple Intelligence model. Requires Apple Intelligence to be enabled. Nothing leaves your Mac. Turn classification off again under **Settings > Experimental**.
+- Experimental: **Hide AI stories** in the filter panel classifies stories with keyword lists and the on-device Apple Intelligence model, and reads the page description of stories from the past week. Requires Apple Intelligence to be enabled. Titles never leave your Mac; the app does fetch page descriptions from story sites and its keyword list from this repo. Turn classification off again under **Settings > Experimental**.
 
 ## Build from source
 
